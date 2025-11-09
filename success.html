@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Pagamento riuscito</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { background:#0b0d12; color:#e9eef5; display:flex; align-items:center; justify-content:center; height:100vh; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    .box { background:#101522; padding:24px 32px; border-radius:16px; text-align:center; min-width:300px; }
+    .ok { color:#2dd39c; font-size:40px; line-height:1; }
+    .err { color:#ff6b6b; }
+    .btn { display:inline-block; margin-top:16px; background:#7c6dff; color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Grazie per l’acquisto</h1>
+    <p id="status">Stiamo inviando la tua scusa…</p>
+    <a class="btn" href="/wallet.html">Vai al wallet</a>
+    <p style="margin-top:10px;"><a href="/index.html" style="color:#fff;opacity:.6;">Torna al catalogo</a></p>
+  </div>
+
+  <script>
+    (async () => {
+      const sessionId = new URL(location.href).searchParams.get('session_id');
+      const status = document.getElementById('status');
+      if (!sessionId) {
+        status.textContent = 'Session ID mancante.';
+        status.className = 'err';
+        return;
+      }
+      const r = await fetch('/.netlify/functions/session-email', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const out = await r.json().catch(()=>({}));
+      if (!r.ok || out.error) {
+        status.textContent = 'Non siamo riusciti a inviare la scusa: ' + (out.error || r.status);
+        status.className = 'err';
+        return;
+      }
+      status.textContent = 'Scusa inviata via email.';
+    })();
+  </script>
+</body>
+</html>
