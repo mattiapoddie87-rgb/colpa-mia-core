@@ -1,0 +1,9 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# facoltativo: forza /success.html a servire statico
+[[redirects]]
+  from = "/success"
+  to = "/success.html"
+  status = 200
