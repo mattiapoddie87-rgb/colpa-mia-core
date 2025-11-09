@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Colpa Mia – Catalogo scuse</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root { color-scheme: dark; }
+    body { margin:0; background:#0b0d12; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    header { padding:16px 24px; border-bottom:1px solid #161b27; display:flex; justify-content:space-between; align-items:center;}
+    a { color:inherit; text-decoration:none; }
+    .btn { background:#7c6dff; border:0; color:white; padding:6px 14px; border-radius:8px; font-weight:600; }
+    .wrapper { max-width:1080px; margin:0 auto; padding:20px 16px 80px; }
+    h2 { margin-top:28px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-top:12px;}
+    .card { background:#101522; border:1px solid #1d2333; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px;}
+    .tag { background:#121a2f; border:1px solid #1f2a43; border-radius:999px; padding:2px 10px; font-size:12px; display:inline-block;}
+    .price { font-weight:700; }
+    .small { font-size:13px; opacity:.85; }
+    footer { text-align:center; padding:20px 0; font-size:12px; opacity:.6; }
+    img.thumb { width:100%; border-radius:8px; background:#0b0d12; aspect-ratio:16/9; object-fit:cover; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>COLPA MIA</strong></div>
+    <div>
+      <a class="btn" href="/wallet.html">Wallet</a>
+    </div>
+  </header>
+  <div class="wrapper">
+    <h1>Catalogo scuse</h1>
+    <p class="small">Scegli il pacchetto, poi aggiungi il contesto nel checkout.</p>
+
+    <h2>Scuse pronte</h2>
+    <div class="grid">
+      <!-- usa gli SKU esatti che hai mappato nelle env -->
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Scusa+Base" alt="" class="thumb">
+        <div><strong>Scusa Base</strong></div>
+        <div class="small">Per piccoli ritardi o dimenticanze.</div>
+        <div class="price">1,00 €</div>
+        <div class="small">+10 minuti di vita</div>
+        <a class="btn" href="/checkout.html?sku=SCUSA_BASE">Acquista</a>
+      </div>
+
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Connessione+KO" class="thumb" alt="">
+        <div><strong>Connessione KO</strong></div>
+        <div class="small">Call saltata, colpa nostra.</div>
+        <div class="price">2,00 €</div>
+        <div class="small">+30 minuti</div>
+        <a class="btn" href="/checkout.html?sku=CONNESSIONE">Acquista</a>
+      </div>
+
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Traffico" class="thumb" alt="">
+        <div><strong>Traffico assurdo</strong></div>
+        <div class="small">Ritardo fisico, spiegazione credibile.</div>
+        <div class="price">2,00 €</div>
+        <div class="small">+20 minuti</div>
+        <a class="btn" href="/checkout.html?sku=TRAFFICO">Acquista</a>
+      </div>
+
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Riunione" class="thumb" alt="">
+        <div><strong>Riunione improvvisa</strong></div>
+        <div class="small">Classico per lavoro/scuola.</div>
+        <div class="price">2,00 €</div>
+        <div class="small">+15 minuti</div>
+        <a class="btn" href="/checkout.html?sku=RIUNIONE">Acquista</a>
+      </div>
+    </div>
+
+    <h2>Ci prendiamo noi la colpa</h2>
+    <div class="grid">
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Colpa+Light" class="thumb" alt="">
+        <div><strong>COLPA_LIGHT</strong></div>
+        <div class="small">Assumiamo noi la responsabilità, casi leggeri.</div>
+        <div class="price">9,90 €</div>
+        <div class="small">+60 minuti</div>
+        <a class="btn" href="/checkout.html?sku=COLPA_LIGHT">Acquista</a>
+      </div>
+
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Colpa+Full" class="thumb" alt="">
+        <div><strong>COLPA_FULL</strong></div>
+        <div class="small">Ritardi/lavori, con mediazione.</div>
+        <div class="price">19,90 €</div>
+        <a class="btn" href="/checkout.html?sku=COLPA_FULL">Acquista</a>
+      </div>
+
+      <div class="card">
+        <img src="https://placehold.co/600x340/111827/ffffff?text=Colpa+Deluxe" class="thumb" alt="">
+        <div><strong>COLPA_DELUXE</strong></div>
+        <div class="small">Caso serio, ci mettiamo la faccia.</div>
+        <div class="price">39,90 €</div>
+        <a class="btn" href="/checkout.html?sku=COLPA_DELUXE">Acquista</a>
+      </div>
+    </div>
+
+    <h2>Termini</h2>
+    <p class="small">
+      Servizio di generazione scuse e assunzione di responsabilità. Non sostituisce pareri legali. Uso conforme alle leggi vigenti.
+    </p>
+  </div>
+  <footer>© Colpa Mia</footer>
+</body>
+</html>
