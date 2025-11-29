@@ -46,15 +46,10 @@ exports.handler = async (event) => {
     const lineItems = priceId ? [{ price: priceId, quantity: 1 }] : [{
     price_data: {
       currency: 'eur',
-      product_data: { name: realSku },
-      unit_amount: 100,
-    },
-    quantity: 1,
-  }];
-  //
-////if (!priceId) {
+            product_data: { name: realSku },
+ (!priceId) {
  /   return json(400, { error: `SKU not mapped: ${sku}` });
-// 
+//
   const origin = event.headers.origin || process.env.SITE_URL || `https://${event.headers.host}`;
   const metadata = { sku: realSku };
   if (context) metadata.context = context;
