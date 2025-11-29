@@ -43,9 +43,18 @@ exports.handler = async (event) => {
   }
   const realSku = PRICE_BY_SKU[sku] ? sku : sku;
   const priceId = PRICE_BY_SKU[realSku];
-  if (!priceId) {
-    return json(400, { error: `SKU not mapped: ${sku}` });
-  }
+    const lineItems = priceId ? [{ price: priceId, quantity: 1 }] : [{
+    price_data: {
+      currency: 'eur',
+      product_data: { name: realSku },
+      unit_amount: 100,
+    },
+    quantity: 1,
+  }];
+  //
+////if (!priceId) {
+ /   return json(400, { error: `SKU not mapped: ${sku}` });
+// 
   const origin = event.headers.origin || process.env.SITE_URL || `https://${event.headers.host}`;
   const metadata = { sku: realSku };
   if (context) metadata.context = context;
@@ -54,7 +63,7 @@ exports.handler = async (event) => {
   if (promo) metadata.promo = promo;
   const sessionParams = {
     mode: 'payment',
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: lineItems,
     allow_promotion_codes: true,
     customer_email: email,
     success_url: `${origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
