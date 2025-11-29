@@ -1,7 +1,8 @@
 // netlify/functions/create-checkout.js
 // const fetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 
-cconst fetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
+oconst myFetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
+
 
 
 
@@ -54,9 +55,9 @@ exports.handler = async (event) => {
     if (promo) {
       // niente, lo scriviamo solo come metadata
       form.append('metadata[promo]', promo);
-    }
+    
 
-    const resp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    const resp = await myFetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
