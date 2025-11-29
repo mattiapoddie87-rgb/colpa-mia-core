@@ -1,32 +1,14 @@
 // netlify/functions/create-checkout.js
 // const fetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 
-const myFetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
+const myFetch = globalThis.fetch;
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+ r
 
 
 
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS'
-};
-const json = (s, b) => ({ statusCode: s, headers: { 'Content-Type': 'application/json', ...CORS }, body: JSON.stringify(b) });
 
-function parseEnvJSON(name) {
-  try { return JSON.parse(process.env[name] || '{}'); }
-  catch { return {}; }
-}
-
-const PRICE_BY_SKU = parseEnvJSON('PRICE_BY_SKU_JSON');
-const PRICE_RULES = parseEnvJSON('PRICE_RULES_JSON');
-
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return json(204, {});
-  if (event.httpMethod !== 'POST') return json(405, { error: 'method_not_allowed' });
-  if (!process.env.STRIPE_SECRET_KEY) return json(500, { error: 'missing STRIPE_SECRET_KEY' });
-
-  try {
     const { sku, email, context, message, promo } = JSON.parse(event.body || '{}');
     if (!sku || !email) return json(400, { error: 'sku and email required' });
 
@@ -35,6 +17,25 @@ exports.handler = async (event) => {
     if (!priceId) return json(400, { error: 'SKU not mapped: '+sku });
 
     const origin = event.headers.origin || process.env.SITE_URL || 'https://'+event.headers.host;
+  // Use Stripe library to create checkout session
+    const sessionParams = {
+      mode: 'payment',
+      line_items: [{ price: PRICE_BY_SKU[realSku], quantity: 1 }],
+      allow_promotion_codes: true,
+      customer_email: email,
+      success_url: `${origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/index.html`,
+      metadata: { sku: realSku },
+    };
+    if (context) sessionParams.metadata.context = context;
+    if (message) sessionParams.metadata.message = message;
+    if (PRICE_RULES[realSku] && PRICE_RULES[realSku].minutes) sessionParams.metadata.minutes = String(PRICE_RULES[realSku].minutes);
+    if (promo) {
+      sessionParams.discounts = [{ coupon: promo }];
+    }
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    return json(200, { url: session.url });
+
 
     const form = new URLSearchParams();
     form.append('mode', 'payment');
