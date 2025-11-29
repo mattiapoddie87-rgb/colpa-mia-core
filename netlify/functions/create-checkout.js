@@ -1,7 +1,7 @@
 // netlify/functions/create-checkout.js
 // const fetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 
-oconst myFetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
+const myFetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
 
 
 
