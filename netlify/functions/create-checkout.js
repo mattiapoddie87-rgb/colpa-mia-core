@@ -1,5 +1,9 @@
 // netlify/functions/create-checkout.js
-const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
+// const fetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
+
+cconst fetch = globalThis.fetch || ((...args) => import('node-fetch').then(({ default: f }) => f(...args)));
+
+
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
