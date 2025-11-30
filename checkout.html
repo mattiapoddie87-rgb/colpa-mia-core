@@ -8,10 +8,11 @@
     body { background:#0b0d12; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
     .wrap { max-width:540px; margin:40px auto; background:#101522; border:1px solid #1a2030; border-radius:14px; padding:16px; }
     label { display:block; margin-top:12px; font-size:14px; }
-    input, textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #2d3446; background:#0f1420; color:#e9eef5; }
+    input, textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid #2d3446; background:#0f1420; color:#e9eef5; }
     button { margin-top:16px; background:#7c6dff; border:0; padding:10px 20px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; }
     .msg { margin-top:12px; font-size:13px; }
     a { color:#fff; }
+    .hint { font-size:12px; color:#9aa4bf; margin-top:4px; }
   </style>
 </head>
 <body>
@@ -22,11 +23,35 @@
     <label>Email per consegna scusa</label>
     <input id="email" type="email" required placeholder="tu@email.com">
 
-    <label>Contesto (cena, lavoro, scuola…)</label>
-    <input id="context" placeholder="cena con amici, consegna in ritardo, ecc.">
+    <!-- Blocchi contesto: select SOLO per SCUSA_BASE -->
+    <div id="context-known" style="display:none;">
+      <label>Contesto</label>
+      <select id="contextSelect">
+        <option value="CENA">Cena</option>
+        <option value="APERITIVO">Aperitivo</option>
+        <option value="EVENTO">Evento</option>
+        <option value="LAVORO">Lavoro</option>
+        <option value="CALCETTO">Calcetto</option>
+        <option value="FAMIGLIA">Famiglia</option>
+        <option value="SALUTE">Salute</option>
+        <option value="APPUNTAMENTO">Appuntamento</option>
+        <option value="ESAME">Esame</option>
+        <option value="TRAFFICO">Traffico</option>
+        <option value="RIUNIONE">Riunione</option>
+        <option value="CONNESSIONE">Connessione KO</option>
+      </select>
+      <p class="hint">
+        Seleziona il contesto: il motore di scuse adatterà il messaggio per te.
+      </p>
+    </div>
+
+    <div id="context-free" style="display:none;">
+      <label>Contesto (cena, lavoro, scuola…)</label>
+      <input id="context" placeholder="cena con amici, consegna in ritardo, ecc.">
+    </div>
 
     <label>Dettagli da includere</label>
-    <textarea id="message" rows="3" placeholder="nomi, date, riferimenti utili"></textarea>
+    <textarea id="details" rows="3" placeholder="nomi, date, riferimenti utili"></textarea>
 
     <!-- Nessun campo codice promo visibile -->
     <button id="pay">Vai al pagamento Stripe</button>
@@ -36,33 +61,112 @@
   </div>
 
   <script>
+    // MODELLI base per SCUSA_BASE (pronti per l'AI, non ancora usati qui)
+    const MODELLI = { 
+      CENA: [
+        'Ciao, grazie mille per l’invito: mi fa davvero piacere. Purtroppo quella sera ho già un impegno e non riesco a unirmi.',
+        'Ciao, mi dispiace ma mi è capitato un imprevisto e stasera non riesco proprio a venire.',
+        'Ciao, onestamente non me la sento di uscire: ho bisogno di una serata tranquilla a casa. Spero capirai.',
+        'Ciao, ho già mangiato e sto seguendo la dieta: stasera passo, ma organizziamo presto.',
+        'Ciao, non so se riesco a venire: ti aggiorno più tardi se ce la faccio.',
+        'Ciao, spero vi divertiate un sacco! Organizziamoci presto per vederci.'
+      ],
+      APERITIVO: [
+        'Ciao, mi spiace tantissimo ma non riesco a venire: ho un altro impegno inderogabile.',
+        'Ciao, avevo piacere di esserci, ma è saltato fuori un imprevisto familiare e devo occuparmene.',
+        'Ciao, è appena uscita un’urgenza al lavoro e non riesco a partecipare. Recuperiamo presto!'
+      ],
+      EVENTO: [
+        'Ciao, grazie davvero per l’invito. Purtroppo per quella data ho già un impegno e non potrò esserci.',
+        'Ciao, mi sarebbe piaciuto molto partecipare ma non riesco a essere presente. Spero in un’altra occasione!',
+        'Ciao, non riesco a venire ma ti auguro un evento bellissimo e ti ringrazio per la comprensione.'
+      ],
+      LAVORO: [
+        'Gentile, ti scrivo per scusarmi dell’inconveniente: mi assumo la responsabilità e ho già messo in atto le correzioni. Ti tengo aggiornato con orari aggiornati.',
+        'Oggetto: Assenza per indisposizione — ti avviso che oggi non riesco a presentarmi per un malessere improvviso. Mi scuso per il disagio e invierò certificazione appena possibile.'
+      ],
+      CALCETTO: [
+        'Ciao, questa volta passo: ho già un altro impegno fissato.',
+        'Ciao, mi sono svegliato con un bel mal di testa: meglio riposare oggi.',
+        'Ciao, ho avuto un imprevisto al lavoro/studio e non riesco a liberarmi.',
+        'Ciao, sono parecchio stanco e non renderei: meglio non venire oggi.',
+        'Ciao, ho un piccolo infortunio e preferisco non rischiare.'
+      ],
+      FAMIGLIA: [
+        'Ciao, mi dispiace ma devo disdire: è subentrato un imprevisto familiare urgente.',
+        'Ciao, ho un impegno in famiglia che non posso rimandare e non potrò esserci. Divertitevi!',
+        'Ciao, mi scuso per il breve preavviso: devo accompagnare un familiare a una visita. Recuperiamo presto.'
+      ],
+      SALUTE: [
+        'Ciao, mi sono svegliato con febbre e mal di gola: meglio non rischiare di contagiare nessuno.',
+        'Ciao, ho un attacco d’allergia forte e oggi devo fermarmi. Appena sto meglio recupero.',
+        'Ciao, hanno anticipato una visita medica e devo andarci oggi pomeriggio.'
+      ],
+      APPUNTAMENTO: [
+        'Ciao, mi dispiace ma devo annullare l’appuntamento di [data/ora] per un imprevisto. Possiamo riprogrammare?',
+        'C’è stata una sovrapposizione di impegni e non riesco a rispettare l’orario: ti va di fissare un’alternativa?',
+        'Purtroppo è subentrata una situazione urgente: posso proporre un’altra data che vada bene a entrambi?'
+      ],
+      ESAME: [
+        'Ciao, mi dispiace per il ritardo: sono rimasto bloccato nel traffico per un incidente e non sono riuscito ad arrivare prima.',
+        'Ciao, mi dispiace per il ritardo: sono rimasta bloccata nel traffico per un incidente e non sono riuscita ad arrivare prima.'
+      ],
+      TRAFFICO: [
+        'Sono in ritardo per un blocco di traffico imprevisto. Mi prendo la responsabilità: arrivo e recupero il tempo, oppure riprogrammiamo oggi stesso in un orario utile per te.'
+      ],
+      RIUNIONE: [
+        'La riunione precedente è sforata e ha impattato il nostro appuntamento. Errore mio di pianificazione: propongo nuovo slot oggi con agenda compressa e materiali in anticipo.'
+      ],
+      CONNESSIONE: [
+        'Problemi di connessione hanno interrotto l’appuntamento. Ho già predisposto un backup per non perdere nulla del lavoro. Propongo una nuova sessione oggi con recap. Ti aggiorno sull\'orario.'
+      ]
+    };
+
     const params = new URL(location.href).searchParams;
     const sku = params.get('sku') || 'SCUSA_BASE';
     document.getElementById('skuLabel').textContent = 'Prodotto: ' + sku;
 
+    // Mostra select solo per SCUSA_BASE
+    const contextKnown = document.getElementById('context-known');
+    const contextFree = document.getElementById('context-free');
+    if (sku === 'SCUSA_BASE') {
+      contextKnown.style.display = 'block';
+    } else {
+      contextFree.style.display = 'block';
+    }
+
     document.getElementById('pay').addEventListener('click', async () => {
       const email = document.getElementById('email').value.trim();
-      const context = document.getElementById('context').value.trim();
-      const message = document.getElementById('message').value.trim();
+      const details = document.getElementById('details').value.trim();
       const msg = document.getElementById('msg');
 
-      if (!email) {
-        msg.textContent = 'Inserisci email';
-        return;
+      let contextValue = '';
+      if (sku === 'SCUSA_BASE') {
+        contextValue = document.getElementById('contextSelect').value;
+      } else {
+        contextValue = document.getElementById('context').value.trim();
       }
+
+      if (!email) { msg.textContent = 'Inserisci email'; return; }
 
       msg.textContent = 'Creo sessione di pagamento…';
 
+      const body = {
+        sku,
+        email,
+        context: contextValue,
+        details
+      };
+
       const r = await fetch('/.netlify/functions/create-checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Nessun promo nel payload: verrà gestito lato server (es. COLPAMIA10 fisso)
-        body: JSON.stringify({ sku, email, context, message })
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
       });
 
-      const out = await r.json().catch(() => ({}));
+      const out = await r.json().catch(()=>({}));
       if (!r.ok || out.error) {
-        msg.textContent = out.error || ('Errore HTTP ' + r.status);
+        msg.textContent = out.error || ('Errore HTTP '+r.status);
         return;
       }
       location.href = out.url;
