@@ -23,6 +23,7 @@
     <label>Email per consegna scusa</label>
     <input id="email" type="email" required placeholder="tu@email.com">
 
+    <!-- SCUSA_BASE: contesti predefiniti -->
     <div id="context-known" style="display:none;">
       <label>Contesto</label>
       <select id="contextSelect">
@@ -35,15 +36,13 @@
         <option value="SALUTE">Salute</option>
         <option value="APPUNTAMENTO">Appuntamento</option>
         <option value="ESAME">Esame</option>
-        <option value="TRAFFICO">Traffico</option>
-        <option value="RIUNIONE">Riunione</option>
-        <option value="CONNESSIONE">Connessione KO</option>
       </select>
       <p class="hint">
         Seleziona il contesto: il motore di scuse adatterà il messaggio per te.
       </p>
     </div>
 
+    <!-- Altri pacchetti: campo libero -->
     <div id="context-free" style="display:none;">
       <label>Contesto (cena, lavoro, scuola…)</label>
       <input id="context" placeholder="cena con amici, consegna in ritardo, ecc.">
@@ -52,6 +51,9 @@
     <label>Dettagli da includere</label>
     <textarea id="details" rows="3" placeholder="nomi, date, riferimenti utili"></textarea>
 
+    <label>Codice promo (facoltativo)</label>
+    <input id="promo" autocomplete="off">
+
     <button id="pay">Vai al pagamento Stripe</button>
     <div class="msg" id="msg"></div>
 
@@ -59,7 +61,6 @@
   </div>
 
   <script>
-    // MODELLI base – verranno usati lato server, qui li manteniamo per coerenza
     const MODELLI = { 
       CENA: [
         'Ciao, grazie mille per l’invito: mi fa davvero piacere. Purtroppo quella sera ho già un impegno e non riesco a unirmi.',
@@ -108,16 +109,8 @@
       ESAME: [
         'Ciao, mi dispiace per il ritardo: sono rimasto bloccato nel traffico per un incidente e non sono riuscito ad arrivare prima.',
         'Ciao, mi dispiace per il ritardo: sono rimasta bloccata nel traffico per un incidente e non sono riuscita ad arrivare prima.'
-      ],
-      TRAFFICO: [
-        'Sono in ritardo per un blocco di traffico imprevisto. Mi prendo la responsabilità: arrivo e recupero il tempo, oppure riprogrammiamo oggi stesso in un orario utile per te.'
-      ],
-      RIUNIONE: [
-        'La riunione precedente è sforata e ha impattato il nostro appuntamento. Errore mio di pianificazione: propongo nuovo slot oggi con agenda compressa e materiali in anticipo.'
-      ],
-      CONNESSIONE: [
-        'Problemi di connessione hanno interrotto l’appuntamento. Ho già predisposto un backup per non perdere nulla del lavoro. Propongo una nuova sessione oggi con recap. Ti aggiorno sull\'orario.'
       ]
+      // I modelli TRAFFICO/RIUNIONE/CONNESSIONE restano gestiti lato server
     };
 
     const params = new URL(location.href).searchParams;
@@ -157,6 +150,7 @@
         email,
         context: contextValue,
         details
+        // il campo promo non viene usato lato server: promo nascosta COLPAMIA10
       };
 
       const r = await fetch('/.netlify/functions/create-checkout', {
