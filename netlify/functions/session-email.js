@@ -18,7 +18,7 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-// MODELLI base (stessi della checkout SCUSA_BASE)
+// MODELLI base per SCUSA_BASE e contesti noti
 const MODELLI = { 
   CENA: [
     'Ciao, grazie mille per l’invito: mi fa davvero piacere. Purtroppo quella sera ho già un impegno e non riesco a unirmi.',
@@ -100,7 +100,7 @@ function buildExcuseFromMetadata(metadata) {
   const context = metadata.context || '';
   const details = metadata.details || '';
 
-  // SCUSA DIVERTENTE: il testo è già nei details
+  // SCUSA DIVERTENTE: il testo è già in details
   if (sku === 'SCUSA_DIVERTENTE') {
     return {
       subject: 'La tua scusa divertente – COLPA MIA',
