@@ -5,11 +5,11 @@
   <title>Checkout scusa</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    body { background:#0b0d12; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    body { background:#0b0d12; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0; }
     .wrap { max-width:540px; margin:40px auto; background:#101522; border:1px solid #1a2030; border-radius:14px; padding:16px; }
     label { display:block; margin-top:12px; font-size:14px; }
     input, textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid #2d3446; background:#0f1420; color:#e9eef5; }
-    button { margin-top:16px; background:#7c6dff; border:0; padding:10px 20px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; }
+    button { margin-top:16px; background:#7c6dff; border:0; padding:10px 20px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; width:100%; }
     .msg { margin-top:12px; font-size:13px; }
     a { color:#fff; }
     .hint { font-size:12px; color:#9aa4bf; margin-top:4px; }
@@ -23,7 +23,6 @@
     <label>Email per consegna scusa</label>
     <input id="email" type="email" required placeholder="tu@email.com">
 
-    <!-- Blocchi contesto: select SOLO per SCUSA_BASE -->
     <div id="context-known" style="display:none;">
       <label>Contesto</label>
       <select id="contextSelect">
@@ -53,7 +52,6 @@
     <label>Dettagli da includere</label>
     <textarea id="details" rows="3" placeholder="nomi, date, riferimenti utili"></textarea>
 
-    <!-- Nessun campo codice promo visibile -->
     <button id="pay">Vai al pagamento Stripe</button>
     <div class="msg" id="msg"></div>
 
@@ -61,7 +59,7 @@
   </div>
 
   <script>
-    // MODELLI base per SCUSA_BASE (pronti per l'AI, non ancora usati qui)
+    // MODELLI base – verranno usati lato server, qui li manteniamo per coerenza
     const MODELLI = { 
       CENA: [
         'Ciao, grazie mille per l’invito: mi fa davvero piacere. Purtroppo quella sera ho già un impegno e non riesco a unirmi.',
@@ -126,9 +124,9 @@
     const sku = params.get('sku') || 'SCUSA_BASE';
     document.getElementById('skuLabel').textContent = 'Prodotto: ' + sku;
 
-    // Mostra select solo per SCUSA_BASE
     const contextKnown = document.getElementById('context-known');
     const contextFree = document.getElementById('context-free');
+
     if (sku === 'SCUSA_BASE') {
       contextKnown.style.display = 'block';
     } else {
@@ -147,7 +145,10 @@
         contextValue = document.getElementById('context').value.trim();
       }
 
-      if (!email) { msg.textContent = 'Inserisci email'; return; }
+      if (!email) {
+        msg.textContent = 'Inserisci email';
+        return;
+      }
 
       msg.textContent = 'Creo sessione di pagamento…';
 
@@ -160,13 +161,13 @@
 
       const r = await fetch('/.netlify/functions/create-checkout', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
-      const out = await r.json().catch(()=>({}));
+      const out = await r.json().catch(() => ({}));
       if (!r.ok || out.error) {
-        msg.textContent = out.error || ('Errore HTTP '+r.status);
+        msg.textContent = out.error || ('Errore HTTP ' + r.status);
         return;
       }
       location.href = out.url;
