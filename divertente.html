@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Scuse Divertenti – COLPA MIA</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { background:#050712; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0; }
+    header { background:#111827; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+    header .logo { font-weight:700; }
+    a { color:#93c5fd; text-decoration:none; }
+    .wrap { max-width:700px; margin:24px auto; padding:16px; }
+    .panel { background:#0b1020; border-radius:16px; border:1px solid #1f2937; padding:16px; display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1.5fr); gap:16px; }
+    @media (max-width:760px) { .panel { grid-template-columns:1fr; } }
+    label { display:block; margin-top:10px; font-size:14px; }
+    select, input, textarea { width:100%; padding:9px; border-radius:8px; border:1px solid #2d3446; background:#050816; color:#e5e7eb; font-size:14px; }
+    button { background:#7c6dff; border-radius:8px; border:0; color:#fff; font-weight:600; padding:9px 14px; cursor:pointer; margin-top:12px; }
+    .badge { display:inline-block; background:#1f2937; border-radius:999px; padding:4px 10px; font-size:11px; margin-bottom:8px; color:#9ca3af; }
+    .card-img { border-radius:12px; overflow:hidden; }
+    .card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+    .msg { font-size:13px; margin-top:8px; color:#9ca3af; }
+    .preview { font-size:13px; background:#020617; border-radius:10px; padding:10px; margin-top:8px; border:1px dashed #1f2937; min-height:80px; white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><a href="/index.html">COLPA MIA</a> · Scuse divertenti</div>
+    <div style="font-size:12px;color:#9ca3af;">Ogni scusa divertente = 1 €</div>
+  </header>
+
+  <div class="wrap">
+    <div class="panel">
+      <div>
+        <div class="badge">Generatore automatico</div>
+        <h1 style="margin:4px 0 8px;font-size:22px;">Scegli il contesto, noi facciamo ridere (e salvare la faccia) te.</h1>
+        <p style="font-size:13px;color:#9ca3af;margin:0 0 10px;">
+          Seleziona il contesto e genera una scusa divertente pronta da mandare in chat.
+          Quando ti piace il risultato, inserisci l’email e paga 1 € per riceverla formattata via mail.
+        </p>
+
+        <label>Contesto</label>
+        <select id="funContext">
+          <option value="CENA">Cena con amici</option>
+          <option value="CALCETTO">Calcetto / sport</option>
+          <option value="RIUNIONE">Riunione di lavoro</option>
+          <option value="TRAFFICO">Traffico / ritardo</option>
+          <option value="APPUNTAMENTO">Appuntamento</option>
+          <option value="FAMIGLIA">Famiglia / pranzo</option>
+        </select>
+
+        <label style="margin-top:10px;">Dettagli opzionali da inserire nella scusa</label>
+        <textarea id="funDetails" rows="3" placeholder="nomi amici, luogo, ora, piccoli dettagli da inserire…"></textarea>
+
+        <button id="btnGenerate">Genera scusa divertente</button>
+
+        <div class="preview" id="funPreview">La tua scusa divertente apparirà qui.</div>
+      </div>
+
+      <div>
+        <div class="card-img">
+          <img src="/images/scusa-divertente-hero.jpg" alt="Scuse divertenti">
+        </div>
+
+        <label style="margin-top:12px;">Email per ricevere la scusa</label>
+        <input id="funEmail" type="email" placeholder="tu@email.com">
+
+        <button id="btnPay">Paga 1 € e ricevi la scusa</button>
+        <div class="msg" id="funMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Modelli divertenti di base
+    const FUNNY_MODELLI = {
+      CENA: [
+        'Raga, oggi il mio frigo mi ha guardato male: devo restare a casa a chiarire con lui. Salto la cena ma vi mando un brindisi vocale.',
+        'Non posso venire: il divano ha aperto un ticket di assistenza perché lo sto trascurando. Devo occuparmene stasera.'
+      ],
+      CALCETTO: [
+        'Salto il calcetto: il mio talento vuole prendersi una pausa per non umiliarvi troppo tutte le settimane.',
+        'Oggi niente calcetto: ho ricevuto una chiamata dalla Serie A ma era uno scherzo, quindi ora sono in lutto sportivo.'
+      ],
+      RIUNIONE: [
+        'Se sparisco dalla riunione è perché la connessione sta scegliendo chi licenziare tra di noi. Nel dubbio, riaggancio io.',
+        'Rimando la riunione: il mio cervello ha richiesto un aggiornamento di sistema e sta ancora riavviando.'
+      ],
+      TRAFFICO: [
+        'Sono bloccato nel traffico: pare che abbiano messo un rallentatore proprio sulla mia motivazione ad arrivare in orario.',
+        'Ritardo per colpa del traffico: Google Maps ha deciso di farmi fare il tour turistico della città prima.'
+      ],
+      APPUNTAMENTO: [
+        'Devo spostare l’appuntamento: il mio lato responsabile è in ritardo, quello irresponsabile è in ferie.',
+        'Annulliamo per oggi: ho appena litigato con l’orologio e sta vincendo lui.'
+      ],
+      FAMIGLIA: [
+        'Non riesco a venire: sono stato requisita dalla famiglia per una riunione straordinaria su “chi cucina cosa”.',
+        'Oggi turno di famiglia: sto partecipando a un reality non ufficiale che si chiama “Con chi litighiamo a pranzo?”.'
+      ]
+    };
+
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    const funContextEl = document.getElementById('funContext');
+    const funDetailsEl = document.getElementById('funDetails');
+    const funPreview = document.getElementById('funPreview');
+    const funEmailEl = document.getElementById('funEmail');
+    const funMsg = document.getElementById('funMsg');
+
+    document.getElementById('btnGenerate').addEventListener('click', () => {
+      const ctx = funContextEl.value;
+      const base = pickRandom(FUNNY_MODELLI[ctx] || [
+        'Oggi salto: ho appena scoperto che sono allergico agli impegni.'
+      ]);
+      const extra = funDetailsEl.value.trim();
+      const finalText = extra ? base + '\n\nDettagli: ' + extra : base;
+      funPreview.textContent = finalText;
+    });
+
+    document.getElementById('btnPay').addEventListener('click', async () => {
+      const email = funEmailEl.value.trim();
+      if (!email) {
+        funMsg.textContent = 'Inserisci una email valida.';
+        return;
+      }
+      const preview = funPreview.textContent.trim();
+      if (!preview || preview === 'La tua scusa divertente apparirà qui.') {
+        funMsg.textContent = 'Genera prima una scusa divertente.';
+        return;
+      }
+
+      funMsg.textContent = 'Creo sessione di pagamento…';
+
+      const body = {
+        sku: 'SCUSA_DIVERTENTE',
+        email,
+        context: 'DIVERTENTE_' + funContextEl.value,
+        details: preview
+      };
+
+      const r = await fetch('/.netlify/functions/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok || out.error) {
+        funMsg.textContent = out.error || ('Errore HTTP ' + r.status);
+        return;
+      }
+      location.href = out.url;
+    });
+  </script>
+</body>
+</html>
