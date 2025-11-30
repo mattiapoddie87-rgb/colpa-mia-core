@@ -18,6 +18,7 @@
   <div class="wrap">
     <h1>Checkout</h1>
     <p id="skuLabel"></p>
+
     <label>Email per consegna scusa</label>
     <input id="email" type="email" required placeholder="tu@email.com">
 
@@ -27,9 +28,7 @@
     <label>Dettagli da includere</label>
     <textarea id="message" rows="3" placeholder="nomi, date, riferimenti utili"></textarea>
 
-    <label>Codice promo (facoltativo)</label>
-    <input id="promo" placeholder="COLPAMIA10">
-
+    <!-- Nessun campo codice promo visibile -->
     <button id="pay">Vai al pagamento Stripe</button>
     <div class="msg" id="msg"></div>
 
@@ -45,22 +44,25 @@
       const email = document.getElementById('email').value.trim();
       const context = document.getElementById('context').value.trim();
       const message = document.getElementById('message').value.trim();
-      const promo = document.getElementById('promo').value.trim();
       const msg = document.getElementById('msg');
 
-      if (!email) { msg.textContent = 'Inserisci email'; return; }
+      if (!email) {
+        msg.textContent = 'Inserisci email';
+        return;
+      }
 
       msg.textContent = 'Creo sessione di pagamento…';
 
       const r = await fetch('/.netlify/functions/create-checkout', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ sku, email, context, message, promo })
+        headers: { 'Content-Type': 'application/json' },
+        // Nessun promo nel payload: verrà gestito lato server (es. COLPAMIA10 fisso)
+        body: JSON.stringify({ sku, email, context, message })
       });
 
-      const out = await r.json().catch(()=>({}));
+      const out = await r.json().catch(() => ({}));
       if (!r.ok || out.error) {
-        msg.textContent = out.error || ('Errore HTTP '+r.status);
+        msg.textContent = out.error || ('Errore HTTP ' + r.status);
         return;
       }
       location.href = out.url;
