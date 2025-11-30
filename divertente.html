@@ -16,10 +16,10 @@
     select, input, textarea { width:100%; padding:9px; border-radius:8px; border:1px solid #2d3446; background:#050816; color:#e5e7eb; font-size:14px; }
     button { background:#7c6dff; border-radius:8px; border:0; color:#fff; font-weight:600; padding:9px 14px; cursor:pointer; margin-top:12px; width:100%; }
     .badge { display:inline-block; background:#1f2937; border-radius:999px; padding:4px 10px; font-size:11px; margin-bottom:8px; color:#9ca3af; }
-    .card-img { border-radius:12px; overflow:hidden; }
-    .card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+    .card-img { border-radius:12px; overflow:hidden; background:radial-gradient(circle at 20% 20%,#22c55e,#f97316 45%,#020617 70%); display:flex; align-items:flex-end; justify-content:flex-start; padding:10px; height:180px; }
+    .card-img span { font-size:40px; }
     .msg { font-size:13px; margin-top:8px; color:#9ca3af; }
-    .preview { font-size:13px; background:#020617; border-radius:10px; padding:10px; margin-top:8px; border:1px dashed #1f2937; min-height:80px; white-space:pre-wrap; }
+    .info { font-size:13px; color:#9ca3af; margin-top:8px; }
   </style>
 </head>
 <body>
@@ -32,10 +32,10 @@
     <div class="panel">
       <div>
         <div class="badge">Generatore automatico</div>
-        <h1 style="margin:4px 0 8px;font-size:22px;">Scegli il contesto, noi facciamo ridere (e salvare la faccia) te.</h1>
+        <h1 style="margin:4px 0 8px;font-size:22px;">Scegli il contesto, noi generiamo la scusa dopo il pagamento.</h1>
         <p style="font-size:13px;color:#9ca3af;margin:0 0 10px;">
-          Seleziona il contesto e genera una scusa divertente pronta da mandare in chat.
-          Quando ti piace il risultato, inserisci l’email e paga 1 € per riceverla formattata via mail.
+          Seleziona il contesto e aggiungi qualche dettaglio. Dopo il pagamento generiamo noi la scusa divertente e te la inviamo via mail,
+          così non la vedi in chiaro prima di aver pagato.
         </p>
 
         <label>Contesto</label>
@@ -51,18 +51,21 @@
         <label style="margin-top:10px;">Dettagli opzionali da inserire nella scusa</label>
         <textarea id="funDetails" rows="3" placeholder="nomi amici, luogo, ora, piccoli dettagli da inserire…"></textarea>
 
-        <button id="btnGenerate">Genera scusa divertente</button>
-
-        <div class="preview" id="funPreview">La tua scusa divertente apparirà qui.</div>
+        <p class="info">
+          La formula precisa della scusa sarà creata automaticamente dal motore COLPA MIA e consegnata solo via email dopo il pagamento.
+        </p>
       </div>
 
       <div>
         <div class="card-img">
-          <img src="/images/scusa-divertente-hero.jpg" alt="Scuse divertenti">
+          <span>😂</span>
         </div>
 
         <label style="margin-top:12px;">Email per ricevere la scusa</label>
         <input id="funEmail" type="email" placeholder="tu@email.com">
+
+        <label>Codice promo (facoltativo)</label>
+        <input id="funPromo" autocomplete="off">
 
         <button id="btnPay">Paga 1 € e ricevi la scusa</button>
         <div class="msg" id="funMsg"></div>
@@ -71,52 +74,10 @@
   </div>
 
   <script>
-    const FUNNY_MODELLI = {
-      CENA: [
-        'Raga, oggi il mio frigo mi ha guardato male: devo restare a casa a chiarire con lui. Salto la cena ma vi mando un brindisi vocale.',
-        'Non posso venire: il divano ha aperto un ticket di assistenza perché lo sto trascurando. Devo occuparmene stasera.'
-      ],
-      CALCETTO: [
-        'Salto il calcetto: il mio talento vuole prendersi una pausa per non umiliarvi troppo tutte le settimane.',
-        'Oggi niente calcetto: ho ricevuto una chiamata dalla Serie A ma era uno scherzo, quindi ora sono in lutto sportivo.'
-      ],
-      RIUNIONE: [
-        'Se sparisco dalla riunione è perché la connessione sta scegliendo chi licenziare tra di noi. Nel dubbio, riaggancio io.',
-        'Rimando la riunione: il mio cervello ha richiesto un aggiornamento di sistema e sta ancora riavviando.'
-      ],
-      TRAFFICO: [
-        'Sono bloccato nel traffico: pare che abbiano messo un rallentatore proprio sulla mia motivazione ad arrivare in orario.',
-        'Ritardo per colpa del traffico: Google Maps ha deciso di farmi fare il tour turistico della città prima.'
-      ],
-      APPUNTAMENTO: [
-        'Devo spostare l’appuntamento: il mio lato responsabile è in ritardo, quello irresponsabile è in ferie.',
-        'Annulliamo per oggi: ho appena litigato con l’orologio e sta vincendo lui.'
-      ],
-      FAMIGLIA: [
-        'Non riesco a venire: sono stato requisita dalla famiglia per una riunione straordinaria su “chi cucina cosa”.',
-        'Oggi turno di famiglia: sto partecipando a un reality non ufficiale che si chiama “Con chi litighiamo a pranzo?”.'
-      ]
-    };
-
-    function pickRandom(arr) {
-      return arr[Math.floor(Math.random() * arr.length)];
-    }
-
     const funContextEl = document.getElementById('funContext');
     const funDetailsEl = document.getElementById('funDetails');
-    const funPreview = document.getElementById('funPreview');
     const funEmailEl = document.getElementById('funEmail');
     const funMsg = document.getElementById('funMsg');
-
-    document.getElementById('btnGenerate').addEventListener('click', () => {
-      const ctx = funContextEl.value;
-      const base = pickRandom(FUNNY_MODELLI[ctx] || [
-        'Oggi salto: ho appena scoperto che sono allergico agli impegni.'
-      ]);
-      const extra = funDetailsEl.value.trim();
-      const finalText = extra ? base + '\n\nDettagli: ' + extra : base;
-      funPreview.textContent = finalText;
-    });
 
     document.getElementById('btnPay').addEventListener('click', async () => {
       const email = funEmailEl.value.trim();
@@ -124,19 +85,17 @@
         funMsg.textContent = 'Inserisci una email valida.';
         return;
       }
-      const preview = funPreview.textContent.trim();
-      if (!preview || preview === 'La tua scusa divertente apparirà qui.') {
-        funMsg.textContent = 'Genera prima una scusa divertente.';
-        return;
-      }
+
+      const context = funContextEl.value;
+      const details = funDetailsEl.value.trim();
 
       funMsg.textContent = 'Creo sessione di pagamento…';
 
       const body = {
         sku: 'SCUSA_DIVERTENTE',
         email,
-        context: 'DIVERTENTE_' + funContextEl.value,
-        details: preview
+        context: 'DIVERTENTE_' + context,
+        details
       };
 
       const r = await fetch('/.netlify/functions/create-checkout', {
@@ -150,6 +109,7 @@
         funMsg.textContent = out.error || ('Errore HTTP ' + r.status);
         return;
       }
+
       location.href = out.url;
     });
   </script>
