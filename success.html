@@ -2,46 +2,70 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>Pagamento riuscito</title>
+  <title>Scusa inviata – COLPA MIA</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    body { background:#0b0d12; color:#e9eef5; display:flex; align-items:center; justify-content:center; height:100vh; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    .box { background:#101522; padding:24px 32px; border-radius:16px; text-align:center; min-width:300px; }
-    .ok { color:#2dd39c; font-size:40px; line-height:1; }
-    .err { color:#ff6b6b; }
-    .btn { display:inline-block; margin-top:16px; background:#7c6dff; color:#fff; padding:8px 16px; border-radius:8px; text-decoration:none; }
+    body { background:#050712; color:#e5e7eb; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0; }
+    .wrap { max-width:520px; margin:60px auto; padding:16px; text-align:center; }
+    h1 { font-size:24px; margin-bottom:8px; }
+    p { font-size:14px; color:#9ca3af; }
+    .status { margin-top:20px; font-size:14px; }
+    a { color:#93c5fd; text-decoration:none; }
+    .spinner {
+      margin:24px auto;
+      width:32px; height:32px;
+      border-radius:50%;
+      border:3px solid #1f2937;
+      border-top-color:#7c6dff;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform:rotate(360deg); }
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>Grazie per l’acquisto</h1>
-    <p id="status">Stiamo inviando la tua scusa…</p>
-    <a class="btn" href="/wallet.html">Vai al wallet</a>
-    <p style="margin-top:10px;"><a href="/index.html" style="color:#fff;opacity:.6;">Torna al catalogo</a></p>
+  <div class="wrap">
+    <h1>Pagamento completato</h1>
+    <p>Stiamo generando e inviando la tua scusa all’indirizzo indicato.</p>
+    <div class="spinner"></div>
+    <div class="status" id="status">Invio email in corso…</div>
+    <p style="margin-top:28px;">
+      <a href="/index.html">← Torna al catalogo</a>
+    </p>
   </div>
 
   <script>
-    (async () => {
-      const sessionId = new URL(location.href).searchParams.get('session_id');
-      const status = document.getElementById('status');
+    async function main() {
+      const params = new URL(location.href).searchParams;
+      const sessionId = params.get('session_id');
+      const statusEl = document.getElementById('status');
+
       if (!sessionId) {
-        status.textContent = 'Session ID mancante.';
-        status.className = 'err';
+        statusEl.textContent = 'Session ID non presente. Se non ricevi la mail, contattaci.';
         return;
       }
-      const r = await fetch('/.netlify/functions/session-email', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ session_id: sessionId })
-      });
-      const out = await r.json().catch(()=>({}));
-      if (!r.ok || out.error) {
-        status.textContent = 'Non siamo riusciti a inviare la scusa: ' + (out.error || r.status);
-        status.className = 'err';
-        return;
+
+      try {
+        const r = await fetch('/.netlify/functions/session-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+
+        const out = await r.json().catch(() => ({}));
+        if (!r.ok || out.error) {
+          statusEl.textContent = out.error || ('Errore HTTP ' + r.status + ' durante l’invio della mail.');
+          return;
+        }
+
+        statusEl.textContent = 'Scusa inviata! Controlla la tua casella di posta (anche spam).';
+      } catch (e) {
+        statusEl.textContent = 'Si è verificato un errore imprevisto. Se non ricevi nulla, contattaci.';
       }
-      status.textContent = 'Scusa inviata via email.';
-    })();
+    }
+
+    main();
   </script>
 </body>
 </html>
