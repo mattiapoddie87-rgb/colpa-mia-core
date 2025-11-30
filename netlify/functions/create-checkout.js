@@ -1,5 +1,4 @@
 // netlify/functions/create-checkout.js
-// oppure: create-checkout-session.js
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
@@ -27,6 +26,8 @@ function parsePriceMap() {
   }
 }
 
+const HIDDEN_PROMO_CODE = 'COLPAMIA10';
+
 exports.handler = async (event) => {
   // Preflight CORS
   if (event.httpMethod === 'OPTIONS') {
@@ -50,18 +51,16 @@ exports.handler = async (event) => {
   }
 
   const {
-    sku,          // es. "SCUSA_BASE"
-    email,        // email per inviare la scusa
-    context,      // contesto (cena, lavoro, ecc.)
-    details,      // dettagli da includere
-    promoCode,    // opzionale, es. "COLPAMIA10"
+    sku,       // es. SCUSA_BASE, SCUSA_PRO, SCUSA_BUSINESS, SCUSA_DIVERTENTE, ecc.
+    email,
+    context,   // contesto (chiave o testo libero)
+    details    // dettagli liberi
   } = data;
 
   if (!sku) {
     return json(400, { error: 'SKU mancante' });
   }
 
-  // URL di origine per success/cancel
   const origin =
     event.headers.origin ||
     process.env.CLIENT_URL ||
@@ -69,16 +68,16 @@ exports.handler = async (event) => {
 
   const successUrl =
     process.env.STRIPE_SUCCESS_URL ||
-    `${origin}/success?session_id={CHECKOUT_SESSION_ID}`;
+    `${origin}/success.html?session_id={CHECKOUT_SESSION_ID}`;
 
   const cancelUrl =
     process.env.STRIPE_CANCEL_URL ||
-    `${origin}/checkout-canceled`;
+    `${origin}/checkout-canceled.html`;
 
   const priceMap = parsePriceMap();
   const priceId = priceMap[sku];
 
-  // Fallback robusto: se non c’è un priceId, usa price_data
+  // Fallback generico: 1€ se non c'è priceId per quello SKU
   const lineItems = priceId
     ? [
         {
@@ -91,17 +90,15 @@ exports.handler = async (event) => {
           price_data: {
             currency: 'eur',
             product_data: {
-              name: sku || 'SCUSA',
-              description: 'Scusa personalizzata COLPA MIA',
+              name: sku,
+              description: 'Scusa automatizzata COLPA MIA',
             },
-            // Fallback: 1€ (100 centesimi). Puoi cambiarlo.
-            unit_amount: 100,
+            unit_amount: 100, // 1€ fallback
           },
           quantity: 1,
         },
       ];
 
-  // Metadata per il post-checkout (es. session-email)
   const metadata = {
     sku: sku || '',
     email: email || '',
@@ -109,26 +106,26 @@ exports.handler = async (event) => {
     details: details || '',
   };
 
+  let discounts = [];
+
   try {
-    let discounts = [];
+    // Promo nascosta: tentiamo di applicare COLPAMIA10 se esiste ed è attiva
+    const promoList = await stripe.promotionCodes.list({
+      code: HIDDEN_PROMO_CODE,
+      active: true,
+      limit: 1,
+    });
 
-    // Promo code opzionale (es. "COLPAMIA10")
-    if (promoCode && typeof promoCode === 'string' && promoCode.trim()) {
-      const code = promoCode.trim();
-
-      const promoList = await stripe.promotionCodes.list({
-        code,
-        active: true,
-        limit: 1,
-      });
-
-      if (promoList.data && promoList.data.length > 0) {
-        discounts = [{ promotion_code: promoList.data[0].id }];
-      } else {
-        console.warn('Codice promo non trovato o non attivo:', code);
-      }
+    if (promoList.data && promoList.data.length > 0) {
+      discounts = [{ promotion_code: promoList.data[0].id }];
+    } else {
+      console.warn('Promo COLPAMIA10 non trovata o non attiva');
     }
+  } catch (err) {
+    console.warn('Errore nel recupero della promo COLPAMIA10:', err);
+  }
 
+  try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -140,7 +137,6 @@ exports.handler = async (event) => {
       discounts: discounts.length ? discounts : undefined,
     });
 
-    // Il frontend può fare window.location = data.url
     return json(200, {
       id: session.id,
       url: session.url,
@@ -149,10 +145,6 @@ exports.handler = async (event) => {
     console.error('Errore Stripe checkout:', err);
     return json(500, {
       error: 'Errore nella creazione della sessione di pagamento',
-      details:
-        process.env.NODE_ENV === 'development'
-          ? String(err.message || err)
-          : undefined,
     });
   }
 };
