@@ -29,13 +29,8 @@ function parsePriceMap() {
 const HIDDEN_PROMO_CODE = 'COLPAMIA10';
 
 exports.handler = async (event) => {
-  // Preflight CORS
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: CORS_HEADERS,
-      body: '',
-    };
+    return { statusCode: 204, headers: CORS_HEADERS, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
@@ -50,12 +45,7 @@ exports.handler = async (event) => {
     return json(400, { error: 'Body JSON non valido' });
   }
 
-  const {
-    sku,       // es. SCUSA_BASE, SCUSA_PRO, SCUSA_BUSINESS, SCUSA_DIVERTENTE, ecc.
-    email,
-    context,   // contesto (chiave o testo libero)
-    details    // dettagli liberi
-  } = data;
+  const { sku, email, context, details } = data;
 
   if (!sku) {
     return json(400, { error: 'SKU mancante' });
@@ -77,7 +67,6 @@ exports.handler = async (event) => {
   const priceMap = parsePriceMap();
   const priceId = priceMap[sku];
 
-  // Fallback generico: 1€ se non c'è priceId per quello SKU
   const lineItems = priceId
     ? [
         {
@@ -93,7 +82,7 @@ exports.handler = async (event) => {
               name: sku,
               description: 'Scusa automatizzata COLPA MIA',
             },
-            unit_amount: 100, // 1€ fallback
+            unit_amount: 100, // 1 € fallback
           },
           quantity: 1,
         },
@@ -109,7 +98,6 @@ exports.handler = async (event) => {
   let discounts = [];
 
   try {
-    // Promo nascosta: tentiamo di applicare COLPAMIA10 se esiste ed è attiva
     const promoList = await stripe.promotionCodes.list({
       code: HIDDEN_PROMO_CODE,
       active: true,
