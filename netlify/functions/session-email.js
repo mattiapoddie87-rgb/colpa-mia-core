@@ -25,7 +25,7 @@ const MODELLI = {
     'Ciao, mi dispiace ma mi è capitato un imprevisto e stasera non riesco proprio a venire.',
     'Ciao, onestamente non me la sento di uscire: ho bisogno di una serata tranquilla a casa. Spero capirai.',
     'Ciao, ho già mangiato e sto seguendo la dieta: stasera passo, ma organizziamo presto.',
-    'Ciao, non so se riesco a venire: ti aggiorno più tardi se ce la faccio.',
+    'Ciao, non so se riesco a venere: ti aggiorno più tardi se ce la faccio.',
     'Ciao, spero vi divertiate un sacco! Organizziamoci presto per vederci.'
   ],
   APERITIVO: [
@@ -79,15 +79,65 @@ const MODELLI = {
   ]
 };
 
+// MODELLI per SCUSA_DIVERTENTE – generazione post pagamento
+const FUNNY_MODELLI = {
+  CENA: [
+    'Raga, oggi il mio frigo mi ha guardato male: devo restare a casa a chiarire con lui. Salto la cena ma vi mando un brindisi vocale.',
+    'Non posso venire: il divano ha aperto un ticket di assistenza perché lo sto trascurando. Devo occuparmene stasera.'
+  ],
+  CALCETTO: [
+    'Salto il calcetto: il mio talento vuole prendersi una pausa per non umiliarvi troppo tutte le settimane.',
+    'Oggi niente calcetto: ho ricevuto una chiamata dalla Serie A ma era uno scherzo, quindi ora sono in lutto sportivo.'
+  ],
+  RIUNIONE: [
+    'Se sparisco dalla riunione è perché la connessione sta scegliendo chi licenziare tra di noi. Nel dubbio, riaggancio io.',
+    'Rimando la riunione: il mio cervello ha richiesto un aggiornamento di sistema e sta ancora riavviando.'
+  ],
+  TRAFFICO: [
+    'Sono bloccato nel traffico: pare che abbiano messo un rallentatore proprio sulla mia motivazione ad arrivare in orario.',
+    'Ritardo per colpa del traffico: Google Maps ha deciso di farmi fare il tour turistico della città prima.'
+  ],
+  APPUNTAMENTO: [
+    'Devo spostare l’appuntamento: il mio lato responsabile è in ritardo, quello irresponsabile è in ferie.',
+    'Annulliamo per oggi: ho appena litigato con l’orologio e sta vincendo lui.'
+  ],
+  FAMIGLIA: [
+    'Non riesco a venire: sono stato requisita dalla famiglia per una riunione straordinaria su “chi cucina cosa”.',
+    'Oggi turno di famiglia: sto partecipando a un reality non ufficiale che si chiama “Con chi litighiamo a pranzo?”.'
+  ]
+};
+
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function validateStripeConfig() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('Configurazione Stripe mancante: STRIPE_SECRET_KEY non impostata');
+  }
+}
+
+function validateSmtpConfig() {
+  const missing = [];
+  if (!process.env.SMTP_HOST) missing.push('SMTP_HOST');
+  if (!process.env.SMTP_PORT) missing.push('SMTP_PORT');
+  if (!process.env.SMTP_USER) missing.push('SMTP_USER');
+  if (!process.env.SMTP_PASS) missing.push('SMTP_PASS');
+  if (!process.env.FROM_EMAIL) missing.push('FROM_EMAIL');
+
+  if (missing.length) {
+    throw new Error(
+      'Configurazione SMTP incompleta. Mancano: ' + missing.join(', ')
+    );
+  }
+}
+
 function createTransport() {
+  validateSmtpConfig();
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
+    secure: Number(process.env.SMTP_PORT) === 465,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -95,16 +145,30 @@ function createTransport() {
   });
 }
 
+function buildFunnyExcuse(contextCode, details) {
+  // context arriva come "DIVERTENTE_CENA", "DIVERTENTE_TRAFFICO", ecc.
+  const key = (contextCode || '').replace(/^DIVERTENTE_/, '');
+  const templates = FUNNY_MODELLI[key] || [
+    'Oggi salto: ho appena scoperto che sono allergico agli impegni.'
+  ];
+  let base = pickRandom(templates);
+  if (details) {
+    base += '\n\nDettagli da tenere in conto:\n' + details;
+  }
+  return base;
+}
+
 function buildExcuseFromMetadata(metadata) {
   const sku = metadata.sku || 'SCUSA_BASE';
   const context = metadata.context || '';
   const details = metadata.details || '';
 
-  // SCUSA DIVERTENTE: il testo è già in details
+  // SCUSA DIVERTENTE: generata qui, dopo il pagamento
   if (sku === 'SCUSA_DIVERTENTE') {
+    const text = buildFunnyExcuse(context, details);
     return {
       subject: 'La tua scusa divertente – COLPA MIA',
-      text: details || 'La tua scusa divertente è stata generata, ma il testo non è disponibile.',
+      text,
     };
   }
 
@@ -170,6 +234,13 @@ exports.handler = async (event) => {
     return json(405, { error: 'Metodo non consentito' });
   }
 
+  try {
+    validateStripeConfig();
+  } catch (e) {
+    console.error(e);
+    return json(500, { error: e.message });
+  }
+
   let data;
   try {
     data = JSON.parse(event.body || '{}');
@@ -187,7 +258,7 @@ exports.handler = async (event) => {
     session = await stripe.checkout.sessions.retrieve(sessionId);
   } catch (err) {
     console.error('Errore nel recupero sessione Stripe:', err);
-    return json(500, { error: 'Impossibile recuperare la sessione di pagamento' });
+    return json(500, { error: 'Impossibile recuperare la sessione di pagamento da Stripe.' });
   }
 
   const metadata = session.metadata || {};
@@ -195,12 +266,18 @@ exports.handler = async (event) => {
   const email = metadata.email || customerDetails.email;
 
   if (!email) {
-    return json(400, { error: 'Email non presente nei metadata/sessione' });
+    return json(400, { error: 'Email non presente nei metadata/sessione. Contattaci e indica il tuo ordine.' });
   }
 
   const { subject, text } = buildExcuseFromMetadata(metadata);
 
-  const transporter = createTransport();
+  let transporter;
+  try {
+    transporter = createTransport();
+  } catch (e) {
+    console.error('Errore configurazione SMTP:', e);
+    return json(500, { error: e.message });
+  }
 
   const mailOptions = {
     from: process.env.FROM_EMAIL || 'no-reply@colpamia.com',
@@ -224,6 +301,6 @@ exports.handler = async (event) => {
     return json(200, { ok: true });
   } catch (err) {
     console.error('Errore invio email:', err);
-    return json(500, { error: 'Errore durante l\'invio della mail' });
+    return json(500, { error: 'Errore durante l\'invio della mail: ' + (err.message || 'errore sconosciuto') });
   }
 };
