@@ -1,30 +1,29 @@
 // netlify/functions/session-email.js
 //
-// Invio email scusa (sempre generata da AI) dopo pagamento.
-// Accetta sia GET che POST:
-// - GET:  /.netlify/functions/session-email?session_id=...
-// - POST: { "session_id": "..."} oppure { "sessionId": "..." }
+// Invio email scusa dopo pagamento.
+// - Recupera Checkout Session Stripe
+// - Genera la scusa con OpenAI usando CONTEXT + DETAILS (integrati nel testo, no etichette)
+// - Invia email via SMTP (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS + FROM_EMAIL)
 //
-// ENV richieste:
-// - STRIPE_SECRET_KEY
-// - EMAIL_USER
-// - EMAIL_PASS
-// - OPENAI_API_KEY
+// Supporta:
+// - GET  /.netlify/functions/session-email?session_id=...
+// - POST { sessionId: "..." } oppure { session_id: "..." }
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require("nodemailer");
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-const CORS = {
+const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const j = (statusCode, body) => ({
+const json = (statusCode, body) => ({
   statusCode,
-  headers: { "Content-Type": "application/json", ...CORS },
+  headers: {
+    "Content-Type": "application/json",
+    ...CORS_HEADERS,
+  },
   body: JSON.stringify(body),
 });
 
@@ -33,6 +32,117 @@ function clean(s) {
 }
 function lower(s) {
   return clean(s).toLowerCase();
+}
+
+function validateStripeConfig() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("Configurazione Stripe mancante: STRIPE_SECRET_KEY non impostata");
+  }
+}
+
+function validateOpenAIConfig() {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("Configurazione OpenAI mancante: OPENAI_API_KEY non impostata");
+  }
+}
+
+function validateSmtpConfig() {
+  const missing = [];
+  if (!process.env.SMTP_HOST) missing.push("SMTP_HOST");
+  if (!process.env.SMTP_PORT) missing.push("SMTP_PORT");
+  if (!process.env.SMTP_USER) missing.push("SMTP_USER");
+  if (!process.env.SMTP_PASS) missing.push("SMTP_PASS");
+  if (!process.env.FROM_EMAIL) missing.push("FROM_EMAIL");
+  if (missing.length) {
+    throw new Error("Configurazione SMTP incompleta. Mancano: " + missing.join(", "));
+  }
+}
+
+function createTransport() {
+  validateSmtpConfig();
+  const port = Number(process.env.SMTP_PORT || 587);
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
+// Compatibilità SKU vecchi -> nuovi
+function normalizeSku(rawSku) {
+  const s = clean(rawSku);
+  if (!s) return "base";
+
+  const u = s.toUpperCase();
+  if (u === "SCUSA_DIVERTENTE") return "divertente";
+  if (u === "SCUSA_PREMIUM") return "premium";
+  if (u === "SCUSA_BUSINESS") return "business";
+  if (u === "SCUSA_BASE") return "base";
+
+  // se già in formato nuovo
+  const l = lower(s);
+  if (["base", "premium", "business", "divertente"].includes(l)) return l;
+
+  return "base";
+}
+
+function normalizeContext(rawContext) {
+  // compatibilità: "DIVERTENTE_CENA" -> "CENA"
+  const c = clean(rawContext);
+  return c.replace(/^DIVERTENTE_/, "");
+}
+
+function buildEmailSubject(sku) {
+  if (sku === "premium") return "La tua scusa premium — COLPA MIA";
+  if (sku === "business") return "La tua scusa business — COLPA MIA";
+  if (sku === "divertente") return "La tua scusa divertente — COLPA MIA";
+  return "La tua scusa — COLPA MIA";
+}
+
+function buildPrompt({ sku, context, details, message, strict }) {
+  const tone =
+    sku === "business"
+      ? "professionale, credibile, concreto"
+      : sku === "premium"
+      ? "curato, elegante, empatico"
+      : sku === "divertente"
+      ? "ironico e leggero, non volgare, comunque credibile"
+      : "semplice, naturale, credibile";
+
+  const strictBlock = strict
+    ? `
+VINCOLI OBBLIGATORI:
+- NON usare etichette come "Contesto:" o "Dettagli:".
+- NON scrivere frasi meta tipo "ti invio una bozza", "scusa strutturata", "calibrata".
+- Il contesto deve emergere chiaramente nella scusa (ambientazione/azione coerente).
+- I dettagli devono comparire come fatti dentro la scusa (non in nota finale).
+- Niente elenchi puntati, niente titoli: solo testo pronto da copiare.
+`
+    : "";
+
+  return `
+Scrivi UNA scusa in italiano pronta da copiare e incollare.
+Tono: ${tone}.
+Lunghezza: 70–120 parole.
+Voce: prima persona singolare.
+
+Contesto scelto dal cliente: ${context || "generico"}.
+Dettagli del cliente da integrare nel testo: ${details || "(nessuno)"}.
+Situazione/extra: ${message || "(vuoto)"}.
+
+${strictBlock}
+
+REQUISITI:
+- Deve includere: 1) scusa, 2) motivo credibile, 3) rimedio concreto (proposta recupero).
+- Deve essere sempre diversa: cambia apertura/struttura/lessico.
+- Integra contesto e dettagli dentro la scusa, senza etichette.
+
+Scrivi SOLO la scusa.
+`.trim();
 }
 
 function violatesForbiddenPatterns(text) {
@@ -74,50 +184,6 @@ function diversityScore(candidate, reference) {
   return 1 - overlap / Math.max(1, a.size);
 }
 
-function buildPrompt({ sku, tone, context, details, message, strict }) {
-  const strictBlock = strict
-    ? `
-VINCOLI OBBLIGATORI (se violi uno solo, la risposta è sbagliata):
-- NON scrivere "Contesto:" o "Dettagli:" o qualsiasi etichetta simile.
-- NON scrivere frasi meta (es. "ti invio una bozza", "scusa strutturata", "calibrata").
-- Il contesto deve emergere chiaramente nella scusa (ambientazione/azione coerente).
-- I dettagli devono comparire COME FATTI dentro la scusa (non come nota finale).
-- Niente elenchi puntati, niente titoli, solo testo pronto da copiare.
-`
-    : "";
-
-  const effectiveTone =
-    tone ||
-    (sku === "premium"
-      ? "premium (più curato, elegante)"
-      : sku === "business"
-      ? "business (professionale, credibile)"
-      : sku === "divertente"
-      ? "divertente (ironico, non volgare)"
-      : "base (semplice, credibile)");
-
-  return `
-Genera UNA scusa pronta da copiare e incollare in italiano.
-Pacchetto: ${sku}.
-Tono: ${effectiveTone}.
-Contesto scelto dal cliente: ${context || "generico"}.
-Dettagli del cliente (da integrare nel testo): ${details || "(nessuno)"}.
-Situazione/extra del cliente: ${message || "(vuoto)"}.
-
-${strictBlock}
-
-REQUISITI:
-- 70–120 parole.
-- Prima persona singolare.
-- Deve includere: 1) scusa + responsabilità minima, 2) motivo credibile, 3) rimedio concreto (proposta di recupero).
-- Deve essere sempre diversa: cambia apertura, struttura e lessico; evita formule ripetute.
-- NON usare etichette come "Contesto:"/"Dettagli:" e NON mettere i dettagli come nota separata.
-- Integra contesto e dettagli organicamente.
-
-Scrivi solo la scusa, senza titoli e senza prefazioni.
-`.trim();
-}
-
 async function callOpenAI({ prompt, sku }) {
   const isFunny = sku === "divertente";
 
@@ -141,7 +207,7 @@ async function callOpenAI({ prompt, sku }) {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -155,17 +221,17 @@ async function callOpenAI({ prompt, sku }) {
     .filter(Boolean);
 }
 
-async function generateExcuseAI({ sku, tone, context, details, message }) {
+async function generateExcuseAI({ sku, context, details, message }) {
   const detailTokens = extractDetailTokens(details);
-  const reference = `${context}\n${details}\n${message}\n${sku}\n${tone}`;
+  const reference = `${context}\n${details}\n${message}\n${sku}`;
 
-  // 1) non-strict
-  const prompt1 = buildPrompt({ sku, tone, context, details, message, strict: false });
-  const cands1 = await callOpenAI({ prompt: prompt1, sku });
+  // 1) first pass
+  const p1 = buildPrompt({ sku, context, details, message, strict: false });
+  const c1 = await callOpenAI({ prompt: p1, sku });
 
-  let best = cands1[0] || "";
+  let best = c1[0] || "";
   let bestScore = -1;
-  for (const c of cands1) {
+  for (const c of c1) {
     const s = diversityScore(c, reference);
     if (s > bestScore) {
       bestScore = s;
@@ -175,14 +241,14 @@ async function generateExcuseAI({ sku, tone, context, details, message }) {
 
   const bad = violatesForbiddenPatterns(best) || !integratesDetails(best, detailTokens);
 
-  // 2) retry strict
+  // 2) strict retry
   if (bad) {
-    const prompt2 = buildPrompt({ sku, tone, context, details, message, strict: true });
-    const cands2 = await callOpenAI({ prompt: prompt2, sku });
+    const p2 = buildPrompt({ sku, context, details, message, strict: true });
+    const c2 = await callOpenAI({ prompt: p2, sku });
 
-    let best2 = cands2[0] || best;
+    let best2 = c2[0] || best;
     let best2Score = -1;
-    for (const c of cands2) {
+    for (const c of c2) {
       const s = diversityScore(c, reference);
       if (s > best2Score) {
         best2Score = s;
@@ -192,7 +258,7 @@ async function generateExcuseAI({ sku, tone, context, details, message }) {
     best = best2;
   }
 
-  // Guard rail finale
+  // last cleanup guard
   if (violatesForbiddenPatterns(best)) {
     best = best
       .replace(/Contesto:\s*.*(\n|$)/gi, "")
@@ -205,113 +271,117 @@ async function generateExcuseAI({ sku, tone, context, details, message }) {
   return best;
 }
 
-function buildEmailSubject(sku) {
-  if (sku === "premium") return "La tua scusa premium — COLPA MIA";
-  if (sku === "business") return "La tua scusa business — COLPA MIA";
-  if (sku === "divertente") return "La tua scusa divertente — COLPA MIA";
-  return "La tua scusa — COLPA MIA";
-}
-
-function buildEmailText(excuse) {
-  return `Ciao,
-
-ecco la tua scusa pronta da copiare e incollare:
-
-${excuse}
-
-Grazie per aver scelto COLPA MIA.
-`;
-}
-
-function buildEmailHtml(excuse) {
-  const safe = (excuse || "")
+function buildEmailHtml(text) {
+  const safe = (text || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\n/g, "<br/>");
+    .replace(/>/g, "&gt;");
 
   return `
-<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
-  <p>Ciao,</p>
-  <p>ecco la tua scusa pronta da copiare e incollare:</p>
-  <div style="border-left: 4px solid #7c3aed; padding-left: 12px; margin: 16px 0;">
-    <em>${safe}</em>
-  </div>
-  <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
-</div>
-`.trim();
-}
-
-function makeTransporter() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
-  if (!user || !pass) throw new Error("EMAIL_USER/EMAIL_PASS mancanti");
-
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: { user, pass },
-  });
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;color:#111827;">
+      <p>Ciao,</p>
+      <p>ecco la tua scusa pronta da copiare e incollare:</p>
+      <blockquote style="border-left:4px solid #7c6dff;padding-left:12px;margin:12px 0;font-style:italic;white-space:pre-wrap;">
+        ${safe}
+      </blockquote>
+      <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
+    </div>
+  `;
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === "OPTIONS") return j(204, {});
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 204, headers: CORS_HEADERS, body: "" };
+  }
+
   if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
-    return j(405, { error: "Method not allowed" });
+    return json(405, { error: "Metodo non consentito" });
   }
 
   try {
-    if (!process.env.STRIPE_SECRET_KEY) return j(500, { error: "STRIPE_SECRET_KEY mancante" });
-    if (!OPENAI_API_KEY) return j(500, { error: "OPENAI_API_KEY mancante" });
-
-    // --- session_id da GET o POST ---
-    let sessionId = "";
-
-    if (event.httpMethod === "GET") {
-      sessionId = clean(new URLSearchParams(event.rawQuery || "").get("session_id"));
-    }
-
-    if (event.httpMethod === "POST") {
-      let body = {};
-      try {
-        const raw = event.isBase64Encoded
-          ? Buffer.from(event.body || "", "base64").toString("utf8")
-          : (event.body || "");
-        body = raw ? JSON.parse(raw) : {};
-      } catch (_) {
-        body = {};
-      }
-      sessionId = sessionId || clean(body.session_id || body.sessionId || "");
-    }
-
-    if (!sessionId) return j(400, { error: "session_id mancante" });
-
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    const md = session?.metadata || {};
-
-    const sku = lower(md.sku || md.plan || "base");
-    const email = clean(md.email || session?.customer_details?.email || "");
-    const tone = clean(md.tone || md.style || "");
-    const context = clean(md.context || md.scenario || md.category || "");
-    const message = clean(md.message || md.notes || "");
-    const details = clean(md.details || md.extra || "");
-
-    if (!email) return j(400, { error: "email mancante nei metadata/session" });
-
-    const excuse = await generateExcuseAI({ sku, tone, context, details, message });
-
-    const transporter = makeTransporter();
-    const subject = buildEmailSubject(sku);
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject,
-      text: buildEmailText(excuse),
-      html: buildEmailHtml(excuse),
-    });
-
-    return j(200, { ok: true, sentTo: email, sku });
+    validateStripeConfig();
+    validateOpenAIConfig();
   } catch (e) {
-    return j(500, { error: e.message || String(e) });
+    console.error(e);
+    return json(500, { error: e.message });
+  }
+
+  // session_id da GET o POST
+  let sessionId = "";
+  if (event.httpMethod === "GET") {
+    sessionId = clean(new URLSearchParams(event.rawQuery || "").get("session_id"));
+  } else {
+    let data = {};
+    try {
+      data = JSON.parse(event.body || "{}");
+    } catch {
+      return json(400, { error: "Body JSON non valido" });
+    }
+    sessionId = clean(data.sessionId || data.session_id || "");
+  }
+
+  if (!sessionId) {
+    return json(400, { error: "session_id/sessionId mancante" });
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId);
+  } catch (err) {
+    console.error("Errore nel recupero sessione Stripe:", err);
+    return json(500, { error: "Impossibile recuperare la sessione di pagamento da Stripe." });
+  }
+
+  const metadata = session.metadata || {};
+  const customerDetails = session.customer_details || {};
+
+  const sku = normalizeSku(metadata.sku || metadata.plan);
+  const context = normalizeContext(metadata.context || "");
+  const details = clean(metadata.details || "");
+  const message = clean(metadata.message || metadata.notes || "");
+  const email = clean(metadata.email || customerDetails.email || "");
+
+  if (!email) {
+    return json(400, {
+      error: "Email non presente nei metadata/sessione. Contattaci e indica il tuo ordine.",
+    });
+  }
+
+  // Generazione AI (sempre)
+  let excuse;
+  try {
+    excuse = await generateExcuseAI({ sku, context, details, message });
+  } catch (err) {
+    console.error("Errore OpenAI:", err);
+    return json(500, { error: "Errore generazione AI: " + (err.message || "errore sconosciuto") });
+  }
+
+  // Invio email via SMTP (come prima)
+  let transporter;
+  try {
+    transporter = createTransport();
+  } catch (e) {
+    console.error("Errore configurazione SMTP:", e);
+    return json(500, { error: e.message });
+  }
+
+  const subject = buildEmailSubject(sku);
+
+  const mailOptions = {
+    from: process.env.FROM_EMAIL || "no-reply@colpamia.com",
+    to: email,
+    subject,
+    text: excuse,
+    html: buildEmailHtml(excuse),
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return json(200, { ok: true });
+  } catch (err) {
+    console.error("Errore invio email:", err);
+    return json(500, {
+      error: "Errore durante l'invio della mail: " + (err.message || "errore sconosciuto"),
+    });
   }
 };
