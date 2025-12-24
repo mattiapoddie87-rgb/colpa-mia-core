@@ -1,9 +1,9 @@
 // netlify/functions/session-email.js
 //
 // Invio email scusa (sempre generata da AI) dopo pagamento.
-// Recupera la Checkout Session Stripe e usa i metadata: sku, email, context, message, details.
-// Generazione AI: contesto + dettagli devono essere integrati nella scusa, senza etichette,
-// senza frasi meta, output sempre diverso, QA + retry.
+// Accetta sia GET che POST:
+// - GET:  /.netlify/functions/session-email?session_id=...
+// - POST: { "session_id": "..."} oppure { "sessionId": "..." }
 //
 // ENV richieste:
 // - STRIPE_SECRET_KEY
@@ -19,7 +19,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
 const j = (statusCode, body) => ({
@@ -65,7 +65,6 @@ function integratesDetails(text, detailTokens) {
   return detailTokens.some((tok) => t.includes(tok));
 }
 
-// Score diversità (semplice e robusto) rispetto a reference
 function diversityScore(candidate, reference) {
   const a = new Set(lower(candidate).split(/\W+/).filter((w) => w.length >= 4));
   const b = new Set(lower(reference).split(/\W+/).filter((w) => w.length >= 4));
@@ -75,7 +74,6 @@ function diversityScore(candidate, reference) {
   return 1 - overlap / Math.max(1, a.size);
 }
 
-// Prompt vincolante: vieta etichette e meta-testo, integra contesto/dettagli nella scusa
 function buildPrompt({ sku, tone, context, details, message, strict }) {
   const strictBlock = strict
     ? `
@@ -88,7 +86,6 @@ VINCOLI OBBLIGATORI (se violi uno solo, la risposta è sbagliata):
 `
     : "";
 
-  // tono in base a sku se non già presente
   const effectiveTone =
     tone ||
     (sku === "premium"
@@ -115,14 +112,13 @@ REQUISITI:
 - Deve includere: 1) scusa + responsabilità minima, 2) motivo credibile, 3) rimedio concreto (proposta di recupero).
 - Deve essere sempre diversa: cambia apertura, struttura e lessico; evita formule ripetute.
 - NON usare etichette come "Contesto:"/"Dettagli:" e NON mettere i dettagli come nota separata.
-- Integra contesto e dettagli organicamente (devono risultare parte naturale della storia).
+- Integra contesto e dettagli organicamente.
 
 Scrivi solo la scusa, senza titoli e senza prefazioni.
 `.trim();
 }
 
 async function callOpenAI({ prompt, sku }) {
-  // Parametri variabili per differenziare ancora di più i pacchetti
   const isFunny = sku === "divertente";
 
   const payload = {
@@ -154,25 +150,22 @@ async function callOpenAI({ prompt, sku }) {
   const d = await r.json();
   if (!r.ok) throw new Error(d?.error?.message || "OpenAI error");
 
-  const candidates = (d.choices || [])
+  return (d.choices || [])
     .map((c) => clean(c?.message?.content))
     .filter(Boolean);
-
-  return candidates;
 }
 
 async function generateExcuseAI({ sku, tone, context, details, message }) {
   const detailTokens = extractDetailTokens(details);
   const reference = `${context}\n${details}\n${message}\n${sku}\n${tone}`;
 
-  // 1) prima generazione (non-strict)
-  let prompt = buildPrompt({ sku, tone, context, details, message, strict: false });
-  let candidates = await callOpenAI({ prompt, sku });
+  // 1) non-strict
+  const prompt1 = buildPrompt({ sku, tone, context, details, message, strict: false });
+  const cands1 = await callOpenAI({ prompt: prompt1, sku });
 
-  // scegli candidato più diverso dal reference
-  let best = candidates[0] || "";
+  let best = cands1[0] || "";
   let bestScore = -1;
-  for (const c of candidates) {
+  for (const c of cands1) {
     const s = diversityScore(c, reference);
     if (s > bestScore) {
       bestScore = s;
@@ -180,19 +173,16 @@ async function generateExcuseAI({ sku, tone, context, details, message }) {
     }
   }
 
-  // QA + retry se:
-  // - pattern vietati
-  // - dettagli non integrati
-  const bad1 = violatesForbiddenPatterns(best) || !integratesDetails(best, detailTokens);
+  const bad = violatesForbiddenPatterns(best) || !integratesDetails(best, detailTokens);
 
-  if (bad1) {
-    const strictPrompt = buildPrompt({ sku, tone, context, details, message, strict: true });
-    const strictCandidates = await callOpenAI({ prompt: strictPrompt, sku });
+  // 2) retry strict
+  if (bad) {
+    const prompt2 = buildPrompt({ sku, tone, context, details, message, strict: true });
+    const cands2 = await callOpenAI({ prompt: prompt2, sku });
 
-    // selezione migliore tra strictCandidates
-    let best2 = strictCandidates[0] || best;
+    let best2 = cands2[0] || best;
     let best2Score = -1;
-    for (const c of strictCandidates) {
+    for (const c of cands2) {
       const s = diversityScore(c, reference);
       if (s > best2Score) {
         best2Score = s;
@@ -202,7 +192,7 @@ async function generateExcuseAI({ sku, tone, context, details, message }) {
     best = best2;
   }
 
-  // Ultima guardia: se ancora etichette/meta, pulizia minima (non dovrebbe accadere col retry)
+  // Guard rail finale
   if (violatesForbiddenPatterns(best)) {
     best = best
       .replace(/Contesto:\s*.*(\n|$)/gi, "")
@@ -234,7 +224,6 @@ Grazie per aver scelto COLPA MIA.
 }
 
 function buildEmailHtml(excuse) {
-  // HTML molto semplice (compatibile Gmail/Outlook)
   const safe = (excuse || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -242,15 +231,15 @@ function buildEmailHtml(excuse) {
     .replace(/\n/g, "<br/>");
 
   return `
-  <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
-    <p>Ciao,</p>
-    <p>ecco la tua scusa pronta da copiare e incollare:</p>
-    <div style="border-left: 4px solid #7c3aed; padding-left: 12px; margin: 16px 0;">
-      <em>${safe}</em>
-    </div>
-    <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
+<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
+  <p>Ciao,</p>
+  <p>ecco la tua scusa pronta da copiare e incollare:</p>
+  <div style="border-left: 4px solid #7c3aed; padding-left: 12px; margin: 16px 0;">
+    <em>${safe}</em>
   </div>
-  `.trim();
+  <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
+</div>
+`.trim();
 }
 
 function makeTransporter() {
@@ -266,22 +255,41 @@ function makeTransporter() {
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return j(204, {});
-  if (event.httpMethod !== "GET") return j(405, { error: "Method not allowed" });
+  if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
+    return j(405, { error: "Method not allowed" });
+  }
 
   try {
     if (!process.env.STRIPE_SECRET_KEY) return j(500, { error: "STRIPE_SECRET_KEY mancante" });
     if (!OPENAI_API_KEY) return j(500, { error: "OPENAI_API_KEY mancante" });
 
-    const sessionId = clean(new URLSearchParams(event.rawQuery || "").get("session_id"));
+    // --- session_id da GET o POST ---
+    let sessionId = "";
+
+    if (event.httpMethod === "GET") {
+      sessionId = clean(new URLSearchParams(event.rawQuery || "").get("session_id"));
+    }
+
+    if (event.httpMethod === "POST") {
+      let body = {};
+      try {
+        const raw = event.isBase64Encoded
+          ? Buffer.from(event.body || "", "base64").toString("utf8")
+          : (event.body || "");
+        body = raw ? JSON.parse(raw) : {};
+      } catch (_) {
+        body = {};
+      }
+      sessionId = sessionId || clean(body.session_id || body.sessionId || "");
+    }
+
     if (!sessionId) return j(400, { error: "session_id mancante" });
 
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const md = session?.metadata || {};
 
-    // Metadati attesi (coerenti con create-checkout.js)
     const sku = lower(md.sku || md.plan || "base");
     const email = clean(md.email || session?.customer_details?.email || "");
-    const promo = clean(md.promo || "");
     const tone = clean(md.tone || md.style || "");
     const context = clean(md.context || md.scenario || md.category || "");
     const message = clean(md.message || md.notes || "");
@@ -289,10 +297,8 @@ exports.handler = async (event) => {
 
     if (!email) return j(400, { error: "email mancante nei metadata/session" });
 
-    // Generazione AI
     const excuse = await generateExcuseAI({ sku, tone, context, details, message });
 
-    // Invio email
     const transporter = makeTransporter();
     const subject = buildEmailSubject(sku);
 
@@ -304,12 +310,7 @@ exports.handler = async (event) => {
       html: buildEmailHtml(excuse),
     });
 
-    return j(200, {
-      ok: true,
-      sentTo: email,
-      sku,
-      promoUsed: !!promo,
-    });
+    return j(200, { ok: true, sentTo: email, sku });
   } catch (e) {
     return j(500, { error: e.message || String(e) });
   }
