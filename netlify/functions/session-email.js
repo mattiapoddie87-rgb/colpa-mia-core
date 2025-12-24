@@ -1,306 +1,316 @@
 // netlify/functions/session-email.js
+//
+// Invio email scusa (sempre generata da AI) dopo pagamento.
+// Recupera la Checkout Session Stripe e usa i metadata: sku, email, context, message, details.
+// Generazione AI: contesto + dettagli devono essere integrati nella scusa, senza etichette,
+// senza frasi meta, output sempre diverso, QA + retry.
+//
+// ENV richieste:
+// - STRIPE_SECRET_KEY
+// - EMAIL_USER
+// - EMAIL_PASS
+// - OPENAI_API_KEY
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const nodemailer = require('nodemailer');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const nodemailer = require("nodemailer");
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST,OPTIONS',
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "GET,OPTIONS",
 };
 
-const json = (statusCode, body) => ({
+const j = (statusCode, body) => ({
   statusCode,
-  headers: {
-    'Content-Type': 'application/json',
-    ...CORS_HEADERS,
-  },
+  headers: { "Content-Type": "application/json", ...CORS },
   body: JSON.stringify(body),
 });
 
-// MODELLI base per SCUSA_BASE e contesti noti
-const MODELLI = { 
-  CENA: [
-    'Ciao, grazie mille per l’invito: mi fa davvero piacere. Purtroppo quella sera ho già un impegno e non riesco a unirmi.',
-    'Ciao, mi dispiace ma mi è capitato un imprevisto e stasera non riesco proprio a venire.',
-    'Ciao, onestamente non me la sento di uscire: ho bisogno di una serata tranquilla a casa. Spero capirai.',
-    'Ciao, ho già mangiato e sto seguendo la dieta: stasera passo, ma organizziamo presto.',
-    'Ciao, non so se riesco a venere: ti aggiorno più tardi se ce la faccio.',
-    'Ciao, spero vi divertiate un sacco! Organizziamoci presto per vederci.'
-  ],
-  APERITIVO: [
-    'Ciao, mi spiace tantissimo ma non riesco a venire: ho un altro impegno inderogabile.',
-    'Ciao, avevo piacere di esserci, ma è saltato fuori un imprevisto familiare e devo occuparmene.',
-    'Ciao, è appena uscita un’urgenza al lavoro e non riesco a partecipare. Recuperiamo presto!'
-  ],
-  EVENTO: [
-    'Ciao, grazie davvero per l’invito. Purtroppo per quella data ho già un impegno e non potrò esserci.',
-    'Ciao, mi sarebbe piaciuto molto partecipare ma non riesco a essere presente. Spero in un’altra occasione!',
-    'Ciao, non riesco a venire ma ti auguro un evento bellissimo e ti ringrazio per la comprensione.'
-  ],
-  LAVORO: [
-    'Gentile, ti scrivo per scusarmi dell’inconveniente: mi assumo la responsabilità e ho già messo in atto le correzioni. Ti tengo aggiornato con orari aggiornati.',
-    'Oggetto: Assenza per indisposizione — ti avviso che oggi non riesco a presentarmi per un malessere improvviso. Mi scuso per il disagio e invierò certificazione appena possibile.'
-  ],
-  CALCETTO: [
-    'Ciao, questa volta passo: ho già un altro impegno fissato.',
-    'Ciao, mi sono svegliato con un bel mal di testa: meglio riposare oggi.',
-    'Ciao, ho avuto un imprevisto al lavoro/studio e non riesco a liberarmi.',
-    'Ciao, sono parecchio stanco e non renderei: meglio non venire oggi.',
-    'Ciao, ho un piccolo infortunio e preferisco non rischiare.'
-  ],
-  FAMIGLIA: [
-    'Ciao, mi dispiace ma devo disdire: è subentrato un imprevisto familiare urgente.',
-    'Ciao, ho un impegno in famiglia che non posso rimandare e non potrò esserci. Divertitevi!',
-    'Ciao, mi scuso per il breve preavviso: devo accompagnare un familiare a una visita. Recuperiamo presto.'
-  ],
-  SALUTE: [
-    'Ciao, mi sono svegliato con febbre e mal di gola: meglio non rischiare di contagiare nessuno.',
-    'Ciao, ho un attacco d’allergia forte e oggi devo fermarmi. Appena sto meglio recupero.',
-    'Ciao, hanno anticipato una visita medica e devo andarci oggi pomeriggio.'
-  ],
-  APPUNTAMENTO: [
-    'Ciao, mi dispiace ma devo annullare l’appuntamento di [data/ora] per un imprevisto. Possiamo riprogrammare?',
-    'C’è stata una sovrapposizione di impegni e non riesco a rispettare l’orario: ti va di fissare un’alternativa?',
-    'Purtroppo è subentrata una situazione urgente: posso proporre un’altra data che vada bene a entrambi?'
-  ],
-  ESAME: [
-    'Ciao, mi dispiace per il ritardo: sono rimasto bloccato nel traffico per un incidente e non sono riuscito ad arrivare prima.',
-    'Ciao, mi dispiace per il ritardo: sono rimasta bloccata nel traffico per un incidente e non sono riuscita ad arrivare prima.'
-  ],
-  TRAFFICO: [
-    'Sono in ritardo per un blocco di traffico imprevisto. Mi prendo la responsabilità: arrivo e recupero il tempo, oppure riprogrammiamo oggi stesso in un orario utile per te.'
-  ],
-  RIUNIONE: [
-    'La riunione precedente è sforata e ha impattato il nostro appuntamento. Errore mio di pianificazione: propongo nuovo slot oggi con agenda compressa e materiali in anticipo.'
-  ],
-  CONNESSIONE: [
-    'Problemi di connessione hanno interrotto l’appuntamento. Ho già predisposto un backup per non perdere nulla del lavoro. Propongo una nuova sessione oggi con recap. Ti aggiorno sull\'orario.'
-  ]
-};
-
-// MODELLI per SCUSA_DIVERTENTE – generazione post pagamento
-const FUNNY_MODELLI = {
-  CENA: [
-    'Raga, oggi il mio frigo mi ha guardato male: devo restare a casa a chiarire con lui. Salto la cena ma vi mando un brindisi vocale.',
-    'Non posso venire: il divano ha aperto un ticket di assistenza perché lo sto trascurando. Devo occuparmene stasera.'
-  ],
-  CALCETTO: [
-    'Salto il calcetto: il mio talento vuole prendersi una pausa per non umiliarvi troppo tutte le settimane.',
-    'Oggi niente calcetto: ho ricevuto una chiamata dalla Serie A ma era uno scherzo, quindi ora sono in lutto sportivo.'
-  ],
-  RIUNIONE: [
-    'Se sparisco dalla riunione è perché la connessione sta scegliendo chi licenziare tra di noi. Nel dubbio, riaggancio io.',
-    'Rimando la riunione: il mio cervello ha richiesto un aggiornamento di sistema e sta ancora riavviando.'
-  ],
-  TRAFFICO: [
-    'Sono bloccato nel traffico: pare che abbiano messo un rallentatore proprio sulla mia motivazione ad arrivare in orario.',
-    'Ritardo per colpa del traffico: Google Maps ha deciso di farmi fare il tour turistico della città prima.'
-  ],
-  APPUNTAMENTO: [
-    'Devo spostare l’appuntamento: il mio lato responsabile è in ritardo, quello irresponsabile è in ferie.',
-    'Annulliamo per oggi: ho appena litigato con l’orologio e sta vincendo lui.'
-  ],
-  FAMIGLIA: [
-    'Non riesco a venire: sono stato requisita dalla famiglia per una riunione straordinaria su “chi cucina cosa”.',
-    'Oggi turno di famiglia: sto partecipando a un reality non ufficiale che si chiama “Con chi litighiamo a pranzo?”.'
-  ]
-};
-
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+function clean(s) {
+  return (s ?? "").toString().trim();
+}
+function lower(s) {
+  return clean(s).toLowerCase();
 }
 
-function validateStripeConfig() {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error('Configurazione Stripe mancante: STRIPE_SECRET_KEY non impostata');
-  }
+function violatesForbiddenPatterns(text) {
+  const t = lower(text);
+  const forbidden = [
+    "ti invio di seguito",
+    "bozza di scusa",
+    "scusa strutturata",
+    "calibrata",
+    "contesto:",
+    "dettagli:",
+    "dettagli da tenere",
+    "ecco una bozza",
+    "ti lascio una bozza",
+  ];
+  return forbidden.some((f) => t.includes(f));
 }
 
-function validateSmtpConfig() {
-  const missing = [];
-  if (!process.env.SMTP_HOST) missing.push('SMTP_HOST');
-  if (!process.env.SMTP_PORT) missing.push('SMTP_PORT');
-  if (!process.env.SMTP_USER) missing.push('SMTP_USER');
-  if (!process.env.SMTP_PASS) missing.push('SMTP_PASS');
-  if (!process.env.FROM_EMAIL) missing.push('FROM_EMAIL');
-
-  if (missing.length) {
-    throw new Error(
-      'Configurazione SMTP incompleta. Mancano: ' + missing.join(', ')
-    );
-  }
+function extractDetailTokens(details) {
+  const tokens = lower(details)
+    .split(/\W+/)
+    .filter((w) => w.length >= 4)
+    .slice(0, 12);
+  return [...new Set(tokens)];
 }
 
-function createTransport() {
-  validateSmtpConfig();
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+function integratesDetails(text, detailTokens) {
+  if (!detailTokens.length) return true;
+  const t = lower(text);
+  return detailTokens.some((tok) => t.includes(tok));
+}
+
+// Score diversità (semplice e robusto) rispetto a reference
+function diversityScore(candidate, reference) {
+  const a = new Set(lower(candidate).split(/\W+/).filter((w) => w.length >= 4));
+  const b = new Set(lower(reference).split(/\W+/).filter((w) => w.length >= 4));
+  if (!a.size) return 0;
+  let overlap = 0;
+  for (const w of a) if (b.has(w)) overlap++;
+  return 1 - overlap / Math.max(1, a.size);
+}
+
+// Prompt vincolante: vieta etichette e meta-testo, integra contesto/dettagli nella scusa
+function buildPrompt({ sku, tone, context, details, message, strict }) {
+  const strictBlock = strict
+    ? `
+VINCOLI OBBLIGATORI (se violi uno solo, la risposta è sbagliata):
+- NON scrivere "Contesto:" o "Dettagli:" o qualsiasi etichetta simile.
+- NON scrivere frasi meta (es. "ti invio una bozza", "scusa strutturata", "calibrata").
+- Il contesto deve emergere chiaramente nella scusa (ambientazione/azione coerente).
+- I dettagli devono comparire COME FATTI dentro la scusa (non come nota finale).
+- Niente elenchi puntati, niente titoli, solo testo pronto da copiare.
+`
+    : "";
+
+  // tono in base a sku se non già presente
+  const effectiveTone =
+    tone ||
+    (sku === "premium"
+      ? "premium (più curato, elegante)"
+      : sku === "business"
+      ? "business (professionale, credibile)"
+      : sku === "divertente"
+      ? "divertente (ironico, non volgare)"
+      : "base (semplice, credibile)");
+
+  return `
+Genera UNA scusa pronta da copiare e incollare in italiano.
+Pacchetto: ${sku}.
+Tono: ${effectiveTone}.
+Contesto scelto dal cliente: ${context || "generico"}.
+Dettagli del cliente (da integrare nel testo): ${details || "(nessuno)"}.
+Situazione/extra del cliente: ${message || "(vuoto)"}.
+
+${strictBlock}
+
+REQUISITI:
+- 70–120 parole.
+- Prima persona singolare.
+- Deve includere: 1) scusa + responsabilità minima, 2) motivo credibile, 3) rimedio concreto (proposta di recupero).
+- Deve essere sempre diversa: cambia apertura, struttura e lessico; evita formule ripetute.
+- NON usare etichette come "Contesto:"/"Dettagli:" e NON mettere i dettagli come nota separata.
+- Integra contesto e dettagli organicamente (devono risultare parte naturale della storia).
+
+Scrivi solo la scusa, senza titoli e senza prefazioni.
+`.trim();
+}
+
+async function callOpenAI({ prompt, sku }) {
+  // Parametri variabili per differenziare ancora di più i pacchetti
+  const isFunny = sku === "divertente";
+
+  const payload = {
+    model: "gpt-4.1-mini",
+    temperature: isFunny ? 1.15 : 1.05,
+    top_p: 0.9,
+    presence_penalty: isFunny ? 0.75 : 0.6,
+    frequency_penalty: 0.55,
+    n: 3,
+    messages: [
+      {
+        role: "system",
+        content:
+          "Sei un copywriter italiano. Scrivi scuse credibili, naturali e varie. Niente meta-commenti, niente etichette.",
+      },
+      { role: "user", content: prompt },
+    ],
+  };
+
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify(payload),
+  });
+
+  const d = await r.json();
+  if (!r.ok) throw new Error(d?.error?.message || "OpenAI error");
+
+  const candidates = (d.choices || [])
+    .map((c) => clean(c?.message?.content))
+    .filter(Boolean);
+
+  return candidates;
+}
+
+async function generateExcuseAI({ sku, tone, context, details, message }) {
+  const detailTokens = extractDetailTokens(details);
+  const reference = `${context}\n${details}\n${message}\n${sku}\n${tone}`;
+
+  // 1) prima generazione (non-strict)
+  let prompt = buildPrompt({ sku, tone, context, details, message, strict: false });
+  let candidates = await callOpenAI({ prompt, sku });
+
+  // scegli candidato più diverso dal reference
+  let best = candidates[0] || "";
+  let bestScore = -1;
+  for (const c of candidates) {
+    const s = diversityScore(c, reference);
+    if (s > bestScore) {
+      bestScore = s;
+      best = c;
+    }
+  }
+
+  // QA + retry se:
+  // - pattern vietati
+  // - dettagli non integrati
+  const bad1 = violatesForbiddenPatterns(best) || !integratesDetails(best, detailTokens);
+
+  if (bad1) {
+    const strictPrompt = buildPrompt({ sku, tone, context, details, message, strict: true });
+    const strictCandidates = await callOpenAI({ prompt: strictPrompt, sku });
+
+    // selezione migliore tra strictCandidates
+    let best2 = strictCandidates[0] || best;
+    let best2Score = -1;
+    for (const c of strictCandidates) {
+      const s = diversityScore(c, reference);
+      if (s > best2Score) {
+        best2Score = s;
+        best2 = c;
+      }
+    }
+    best = best2;
+  }
+
+  // Ultima guardia: se ancora etichette/meta, pulizia minima (non dovrebbe accadere col retry)
+  if (violatesForbiddenPatterns(best)) {
+    best = best
+      .replace(/Contesto:\s*.*(\n|$)/gi, "")
+      .replace(/Dettagli:\s*.*(\n|$)/gi, "")
+      .replace(/ti invio.*(\n|$)/gi, "")
+      .replace(/bozza.*(\n|$)/gi, "")
+      .trim();
+  }
+
+  return best;
+}
+
+function buildEmailSubject(sku) {
+  if (sku === "premium") return "La tua scusa premium — COLPA MIA";
+  if (sku === "business") return "La tua scusa business — COLPA MIA";
+  if (sku === "divertente") return "La tua scusa divertente — COLPA MIA";
+  return "La tua scusa — COLPA MIA";
+}
+
+function buildEmailText(excuse) {
+  return `Ciao,
+
+ecco la tua scusa pronta da copiare e incollare:
+
+${excuse}
+
+Grazie per aver scelto COLPA MIA.
+`;
+}
+
+function buildEmailHtml(excuse) {
+  // HTML molto semplice (compatibile Gmail/Outlook)
+  const safe = (excuse || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>");
+
+  return `
+  <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
+    <p>Ciao,</p>
+    <p>ecco la tua scusa pronta da copiare e incollare:</p>
+    <div style="border-left: 4px solid #7c3aed; padding-left: 12px; margin: 16px 0;">
+      <em>${safe}</em>
+    </div>
+    <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
+  </div>
+  `.trim();
+}
+
+function makeTransporter() {
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_PASS;
+  if (!user || !pass) throw new Error("EMAIL_USER/EMAIL_PASS mancanti");
+
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
   });
 }
 
-function buildFunnyExcuse(contextCode, details) {
-  // context arriva come "DIVERTENTE_CENA", "DIVERTENTE_TRAFFICO", ecc.
-  const key = (contextCode || '').replace(/^DIVERTENTE_/, '');
-  const templates = FUNNY_MODELLI[key] || [
-    'Oggi salto: ho appena scoperto che sono allergico agli impegni.'
-  ];
-  let base = pickRandom(templates);
-  if (details) {
-    base += '\n\nDettagli da tenere in conto:\n' + details;
-  }
-  return base;
-}
-
-function buildExcuseFromMetadata(metadata) {
-  const sku = metadata.sku || 'SCUSA_BASE';
-  const context = metadata.context || '';
-  const details = metadata.details || '';
-
-  // SCUSA DIVERTENTE: generata qui, dopo il pagamento
-  if (sku === 'SCUSA_DIVERTENTE') {
-    const text = buildFunnyExcuse(context, details);
-    return {
-      subject: 'La tua scusa divertente – COLPA MIA',
-      text,
-    };
-  }
-
-  // SCUSA BASE con contesti noti
-  if (sku === 'SCUSA_BASE' && MODELLI[context]) {
-    let base = pickRandom(MODELLI[context]);
-    if (details) {
-      base += '\n\nDettagli aggiuntivi:\n' + details;
-    }
-    return {
-      subject: 'La tua scusa – COLPA MIA',
-      text: base,
-    };
-  }
-
-  // SCUSA PREMIUM
-  if (sku === 'SCUSA_PREMIUM') {
-    const base =
-      'Ti invio di seguito una bozza di scusa strutturata, calibrata sul contesto indicato.\n\n' +
-      (context ? `Contesto: ${context}\n` : '') +
-      (details ? `Dettagli: ${details}\n\n` : '\n') +
-      'Mi scuso sinceramente per l’inconveniente e mi rendo disponibile a recuperare nel modo più utile per te.';
-    return {
-      subject: 'La tua scusa premium – COLPA MIA',
-      text: base,
-    };
-  }
-
-  // SCUSA BUSINESS
-  if (sku === 'SCUSA_BUSINESS') {
-    const base =
-      'Gentile destinatario,\n\n' +
-      'desidero innanzitutto scusarmi per il disservizio. ' +
-      'Prendo piena responsabilità dell’accaduto e sto già intervenendo per evitare che si ripeta.\n\n' +
-      (context ? `Contesto: ${context}\n` : '') +
-      (details ? `Dettagli operativi: ${details}\n\n` : '\n') +
-      'Resto a disposizione per qualsiasi chiarimento e per concordare la soluzione più adatta alle tue esigenze.\n\n' +
-      'Cordiali saluti.';
-    return {
-      subject: 'Comunicazione formale – COLPA MIA',
-      text: base,
-    };
-  }
-
-  // Fallback generico
-  const fallback =
-    'Ciao, ti scrivo per scusarmi per l’imprevisto.\n\n' +
-    (context ? `Contesto: ${context}\n` : '') +
-    (details ? `Dettagli: ${details}\n\n` : '\n') +
-    'Spero che potremo recuperare al più presto in un modo che vada bene a entrambi.';
-  return {
-    subject: 'La tua scusa – COLPA MIA',
-    text: fallback,
-  };
-}
-
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: CORS_HEADERS, body: '' };
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return json(405, { error: 'Metodo non consentito' });
-  }
+  if (event.httpMethod === "OPTIONS") return j(204, {});
+  if (event.httpMethod !== "GET") return j(405, { error: "Method not allowed" });
 
   try {
-    validateStripeConfig();
+    if (!process.env.STRIPE_SECRET_KEY) return j(500, { error: "STRIPE_SECRET_KEY mancante" });
+    if (!OPENAI_API_KEY) return j(500, { error: "OPENAI_API_KEY mancante" });
+
+    const sessionId = clean(new URLSearchParams(event.rawQuery || "").get("session_id"));
+    if (!sessionId) return j(400, { error: "session_id mancante" });
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const md = session?.metadata || {};
+
+    // Metadati attesi (coerenti con create-checkout.js)
+    const sku = lower(md.sku || md.plan || "base");
+    const email = clean(md.email || session?.customer_details?.email || "");
+    const promo = clean(md.promo || "");
+    const tone = clean(md.tone || md.style || "");
+    const context = clean(md.context || md.scenario || md.category || "");
+    const message = clean(md.message || md.notes || "");
+    const details = clean(md.details || md.extra || "");
+
+    if (!email) return j(400, { error: "email mancante nei metadata/session" });
+
+    // Generazione AI
+    const excuse = await generateExcuseAI({ sku, tone, context, details, message });
+
+    // Invio email
+    const transporter = makeTransporter();
+    const subject = buildEmailSubject(sku);
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject,
+      text: buildEmailText(excuse),
+      html: buildEmailHtml(excuse),
+    });
+
+    return j(200, {
+      ok: true,
+      sentTo: email,
+      sku,
+      promoUsed: !!promo,
+    });
   } catch (e) {
-    console.error(e);
-    return json(500, { error: e.message });
-  }
-
-  let data;
-  try {
-    data = JSON.parse(event.body || '{}');
-  } catch (e) {
-    return json(400, { error: 'Body JSON non valido' });
-  }
-
-  const sessionId = data.sessionId;
-  if (!sessionId) {
-    return json(400, { error: 'sessionId mancante' });
-  }
-
-  let session;
-  try {
-    session = await stripe.checkout.sessions.retrieve(sessionId);
-  } catch (err) {
-    console.error('Errore nel recupero sessione Stripe:', err);
-    return json(500, { error: 'Impossibile recuperare la sessione di pagamento da Stripe.' });
-  }
-
-  const metadata = session.metadata || {};
-  const customerDetails = session.customer_details || {};
-  const email = metadata.email || customerDetails.email;
-
-  if (!email) {
-    return json(400, { error: 'Email non presente nei metadata/sessione. Contattaci e indica il tuo ordine.' });
-  }
-
-  const { subject, text } = buildExcuseFromMetadata(metadata);
-
-  let transporter;
-  try {
-    transporter = createTransport();
-  } catch (e) {
-    console.error('Errore configurazione SMTP:', e);
-    return json(500, { error: e.message });
-  }
-
-  const mailOptions = {
-    from: process.env.FROM_EMAIL || 'no-reply@colpamia.com',
-    to: email,
-    subject,
-    text,
-    html: `
-      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;color:#111827;">
-        <p>Ciao,</p>
-        <p>ecco la tua scusa pronta da copiare e incollare:</p>
-        <blockquote style="border-left:4px solid #7c6dff;padding-left:12px;margin:12px 0;font-style:italic;white-space:pre-wrap;">
-          ${text.replace(/</g,'&lt;')}
-        </blockquote>
-        <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
-      </div>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    return json(200, { ok: true });
-  } catch (err) {
-    console.error('Errore invio email:', err);
-    return json(500, { error: 'Errore durante l\'invio della mail: ' + (err.message || 'errore sconosciuto') });
+    return j(500, { error: e.message || String(e) });
   }
 };
