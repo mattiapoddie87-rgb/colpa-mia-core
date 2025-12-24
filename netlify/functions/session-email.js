@@ -3,6 +3,7 @@
 // Invio email scusa dopo pagamento.
 // - Recupera Checkout Session Stripe
 // - Genera la scusa con OpenAI usando CONTEXT + DETAILS (integrati nel testo, no etichette)
+// - DIFFERENZIAZIONE FORTE: "divertente" deve far sorridere davvero (vincoli comici + QA + retry)
 // - Invia email via SMTP (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS + FROM_EMAIL)
 //
 // Supporta:
@@ -83,7 +84,6 @@ function normalizeSku(rawSku) {
   if (u === "SCUSA_BUSINESS") return "business";
   if (u === "SCUSA_BASE") return "base";
 
-  // se già in formato nuovo
   const l = lower(s);
   if (["base", "premium", "business", "divertente"].includes(l)) return l;
 
@@ -91,7 +91,6 @@ function normalizeSku(rawSku) {
 }
 
 function normalizeContext(rawContext) {
-  // compatibilità: "DIVERTENTE_CENA" -> "CENA"
   const c = clean(rawContext);
   return c.replace(/^DIVERTENTE_/, "");
 }
@@ -104,13 +103,15 @@ function buildEmailSubject(sku) {
 }
 
 function buildPrompt({ sku, context, details, message, strict }) {
+  const isFunny = sku === "divertente";
+
   const tone =
     sku === "business"
       ? "professionale, credibile, concreto"
       : sku === "premium"
       ? "curato, elegante, empatico"
-      : sku === "divertente"
-      ? "ironico e leggero, non volgare, comunque credibile"
+      : isFunny
+      ? "molto divertente, ironico, brillante (non volgare), comunque credibile"
       : "semplice, naturale, credibile";
 
   const strictBlock = strict
@@ -121,6 +122,16 @@ VINCOLI OBBLIGATORI:
 - Il contesto deve emergere chiaramente nella scusa (ambientazione/azione coerente).
 - I dettagli devono comparire come fatti dentro la scusa (non in nota finale).
 - Niente elenchi puntati, niente titoli: solo testo pronto da copiare.
+`
+    : "";
+
+  const funnyBlock = isFunny
+    ? `
+VINCOLI COMICI (OBBLIGATORI):
+- Deve far sorridere: inserisci ALMENO 1 tra: personificazione (oggetti che parlano), iperbole, analogia assurda ma comprensibile, micro-colpo di scena.
+- Deve restare plausibile: chiudi con una proposta concreta (rimedio) e un tono “ci tengo”.
+- Vietato essere “troppo educato/aziendale”: niente stile formale.
+- Evita battute da boomer: comicità moderna e secca.
 `
     : "";
 
@@ -135,11 +146,13 @@ Dettagli del cliente da integrare nel testo: ${details || "(nessuno)"}.
 Situazione/extra: ${message || "(vuoto)"}.
 
 ${strictBlock}
+${funnyBlock}
 
 REQUISITI:
 - Deve includere: 1) scusa, 2) motivo credibile, 3) rimedio concreto (proposta recupero).
 - Deve essere sempre diversa: cambia apertura/struttura/lessico.
 - Integra contesto e dettagli dentro la scusa, senza etichette.
+- Se pacchetto divertente: deve contenere almeno 1 elemento comico riconoscibile.
 
 Scrivi SOLO la scusa.
 `.trim();
@@ -175,6 +188,41 @@ function integratesDetails(text, detailTokens) {
   return detailTokens.some((tok) => t.includes(tok));
 }
 
+// Heuristica: "divertente" deve avere almeno un segnale comico riconoscibile
+function isActuallyFunny(text) {
+  const t = lower(text);
+  const markers = [
+    "divano",
+    "ticket",
+    "assistenza",
+    "riavvio",
+    "aggiornamento",
+    "plot twist",
+    "scherzo",
+    "mi ha guardato",
+    "ha deciso",
+    "ha aperto",
+    "in sciopero",
+    "in ferie",
+    "in lutto",
+    "dramma",
+    "tragico",
+    "surreale",
+    "google maps",
+    "tour turistico",
+    "frigo",
+    "reality",
+    "orologio",
+    "cervello",
+    "motivazione",
+  ];
+  if (markers.some((m) => t.includes(m))) return true;
+  if (/😅|😂|🤣/.test(text)) return true;
+  // presenza di un giro di frase ironico comune
+  if (/(e niente|quindi sì|morale|plot|praticamente)/i.test(text)) return true;
+  return false;
+}
+
 function diversityScore(candidate, reference) {
   const a = new Set(lower(candidate).split(/\W+/).filter((w) => w.length >= 4));
   const b = new Set(lower(reference).split(/\W+/).filter((w) => w.length >= 4));
@@ -189,9 +237,10 @@ async function callOpenAI({ prompt, sku }) {
 
   const payload = {
     model: "gpt-4.1-mini",
-    temperature: isFunny ? 1.15 : 1.05,
+    // parametri più “inventivi” per divertente
+    temperature: isFunny ? 1.25 : 1.03,
     top_p: 0.9,
-    presence_penalty: isFunny ? 0.75 : 0.6,
+    presence_penalty: isFunny ? 0.85 : 0.55,
     frequency_penalty: 0.55,
     n: 3,
     messages: [
@@ -239,7 +288,11 @@ async function generateExcuseAI({ sku, context, details, message }) {
     }
   }
 
-  const bad = violatesForbiddenPatterns(best) || !integratesDetails(best, detailTokens);
+  // QA: vietati + deve integrare dettagli + se divertente deve essere davvero divertente
+  const bad =
+    violatesForbiddenPatterns(best) ||
+    !integratesDetails(best, detailTokens) ||
+    (sku === "divertente" && !isActuallyFunny(best));
 
   // 2) strict retry
   if (bad) {
