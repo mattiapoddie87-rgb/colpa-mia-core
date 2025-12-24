@@ -1,171 +1,168 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
-  <title>Checkout scusa</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>COLPA MIA — Generatore automatico</title>
   <style>
-    body { background:#0b0d12; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; margin:0; }
-    .wrap { max-width:540px; margin:40px auto; background:#101522; border:1px solid #1a2030; border-radius:14px; padding:16px; }
-    label { display:block; margin-top:12px; font-size:14px; }
-    input, textarea, select { width:100%; padding:10px; border-radius:8px; border:1px solid #2d3446; background:#0f1420; color:#e9eef5; }
-    button { margin-top:16px; background:#7c6dff; border:0; padding:10px 20px; border-radius:8px; color:#fff; font-weight:600; cursor:pointer; width:100%; }
-    .msg { margin-top:12px; font-size:13px; }
-    a { color:#fff; }
-    .hint { font-size:12px; color:#9aa4bf; margin-top:4px; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b1020; color:#e9ecff; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px 18px; }
+    .grid { display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; }
+    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 18px; }
+    .chip { display:inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(124,58,237,.18); border: 1px solid rgba(124,58,237,.35); font-size: 12px; }
+    h1 { margin: 10px 0 8px; font-size: 28px; letter-spacing: -0.02em; }
+    p { margin: 0 0 14px; color: rgba(233,236,255,0.82); }
+    label { display:block; font-size: 13px; margin: 12px 0 6px; color: rgba(233,236,255,0.92); }
+    input, select, textarea {
+      width: 100%; box-sizing: border-box;
+      padding: 12px 12px; border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.28); color:#e9ecff;
+      outline: none;
+    }
+    textarea { min-height: 86px; resize: vertical; }
+    .note { font-size: 12px; color: rgba(233,236,255,0.70); margin-top: 6px; }
+    .rightBox { display:flex; flex-direction:column; gap: 12px; }
+    .hero {
+      height: 180px; border-radius: 16px;
+      background: radial-gradient( circle at 30% 25%, rgba(34,197,94,.55), transparent 55%),
+                  radial-gradient( circle at 70% 60%, rgba(249,115,22,.55), transparent 55%),
+                  rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      position: relative;
+    }
+    .emoji { position:absolute; left: 14px; bottom: 10px; font-size: 34px; }
+    button {
+      width:100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 0;
+      background: #7c3aed;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .65; cursor: not-allowed; }
+    .err { margin-top: 10px; font-size: 13px; color: #fecaca; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
+
 <body>
   <div class="wrap">
-    <h1>Checkout</h1>
-    <p id="skuLabel"></p>
+    <div class="grid">
+      <div class="card">
+        <span class="chip">Generatore automatico</span>
+        <h1>Scegli il contesto, noi generiamo la scusa dopo il pagamento.</h1>
+        <p>
+          Inserisci il contesto e (facoltativo) alcuni dettagli: la scusa verrà generata da AI e integrerà
+          queste informazioni in modo naturale, senza mostrarle come “campi” separati.
+        </p>
 
-    <label>Email per consegna scusa</label>
-    <input id="email" type="email" required placeholder="tu@email.com">
+        <label for="sku">Pacchetto</label>
+        <select id="sku">
+          <option value="base">Base</option>
+          <option value="premium" selected>Premium</option>
+          <option value="business">Business</option>
+        </select>
 
-    <!-- SCUSA_BASE: contesti predefiniti -->
-    <div id="context-known" style="display:none;">
-      <label>Contesto</label>
-      <select id="contextSelect">
-        <option value="CENA">Cena</option>
-        <option value="APERITIVO">Aperitivo</option>
-        <option value="EVENTO">Evento</option>
-        <option value="LAVORO">Lavoro</option>
-        <option value="CALCETTO">Calcetto</option>
-        <option value="FAMIGLIA">Famiglia</option>
-        <option value="SALUTE">Salute</option>
-        <option value="APPUNTAMENTO">Appuntamento</option>
-        <option value="ESAME">Esame</option>
-      </select>
-      <p class="hint">
-        Seleziona il contesto: il motore di scuse adatterà il messaggio per te.
-      </p>
+        <label for="context">Contesto</label>
+        <select id="context">
+          <option value="Cena con amici">Cena con amici</option>
+          <option value="Cena in famiglia">Cena in famiglia</option>
+          <option value="Cena dalla nonna">Cena dalla nonna</option>
+          <option value="Appuntamento">Appuntamento</option>
+          <option value="Lavoro">Lavoro</option>
+          <option value="Altro">Altro</option>
+        </select>
+
+        <label for="message">Dettaglio della situazione (facoltativo)</label>
+        <textarea id="message" placeholder="Esempio: arrivo in ritardo, non posso venire, devo rimandare..."></textarea>
+
+        <label for="details">Dettagli aggiuntivi (facoltativo)</label>
+        <textarea id="details" placeholder="Esempio: è Natale, ho la febbre, sono in moto, devo passare da mia madre..."></textarea>
+        <div class="note">Questi dettagli verranno integrati dentro la scusa in modo naturale.</div>
+
+        <div class="note" style="margin-top:12px;">
+          La scusa precisa verrà creata dal motore AI COLPA MIA e consegnata via email dopo il pagamento.
+        </div>
+      </div>
+
+      <div class="rightBox">
+        <div class="hero">
+          <div class="emoji">😂</div>
+        </div>
+
+        <div class="card">
+          <label for="email">Email per ricevere la scusa</label>
+          <input id="email" type="email" placeholder="tu@email.com" autocomplete="email" />
+
+          <label for="promo">Codice promo (facoltativo)</label>
+          <input id="promo" type="text" placeholder="PROMO" />
+
+          <button id="payBtn">Paga e ricevi la scusa</button>
+          <div id="err" class="err" style="display:none;"></div>
+        </div>
+      </div>
     </div>
-
-    <!-- Altri pacchetti: campo libero -->
-    <div id="context-free" style="display:none;">
-      <label>Contesto (cena, lavoro, scuola…)</label>
-      <input id="context" placeholder="cena con amici, consegna in ritardo, ecc.">
-    </div>
-
-    <label>Dettagli da includere</label>
-    <textarea id="details" rows="3" placeholder="nomi, date, riferimenti utili"></textarea>
-
-    <label>Codice promo (facoltativo)</label>
-    <input id="promo" autocomplete="off">
-
-    <button id="pay">Vai al pagamento Stripe</button>
-    <div class="msg" id="msg"></div>
-
-    <p><a href="/index.html">← Torna al catalogo</a></p>
   </div>
 
-  <script>
-    const MODELLI = { 
-      CENA: [
-        'Ciao, grazie mille per l’invito: mi fa davvero piacere. Purtroppo quella sera ho già un impegno e non riesco a unirmi.',
-        'Ciao, mi dispiace ma mi è capitato un imprevisto e stasera non riesco proprio a venire.',
-        'Ciao, onestamente non me la sento di uscire: ho bisogno di una serata tranquilla a casa. Spero capirai.',
-        'Ciao, ho già mangiato e sto seguendo la dieta: stasera passo, ma organizziamo presto.',
-        'Ciao, non so se riesco a venire: ti aggiorno più tardi se ce la faccio.',
-        'Ciao, spero vi divertiate un sacco! Organizziamoci presto per vederci.'
-      ],
-      APERITIVO: [
-        'Ciao, mi spiace tantissimo ma non riesco a venire: ho un altro impegno inderogabile.',
-        'Ciao, avevo piacere di esserci, ma è saltato fuori un imprevisto familiare e devo occuparmene.',
-        'Ciao, è appena uscita un’urgenza al lavoro e non riesco a partecipare. Recuperiamo presto!'
-      ],
-      EVENTO: [
-        'Ciao, grazie davvero per l’invito. Purtroppo per quella data ho già un impegno e non potrò esserci.',
-        'Ciao, mi sarebbe piaciuto molto partecipare ma non riesco a essere presente. Spero in un’altra occasione!',
-        'Ciao, non riesco a venire ma ti auguro un evento bellissimo e ti ringrazio per la comprensione.'
-      ],
-      LAVORO: [
-        'Gentile, ti scrivo per scusarmi dell’inconveniente: mi assumo la responsabilità e ho già messo in atto le correzioni. Ti tengo aggiornato con orari aggiornati.',
-        'Oggetto: Assenza per indisposizione — ti avviso che oggi non riesco a presentarmi per un malessere improvviso. Mi scuso per il disagio e invierò certificazione appena possibile.'
-      ],
-      CALCETTO: [
-        'Ciao, questa volta passo: ho già un altro impegno fissato.',
-        'Ciao, mi sono svegliato con un bel mal di testa: meglio riposare oggi.',
-        'Ciao, ho avuto un imprevisto al lavoro/studio e non riesco a liberarmi.',
-        'Ciao, sono parecchio stanco e non renderei: meglio non venire oggi.',
-        'Ciao, ho un piccolo infortunio e preferisco non rischiare.'
-      ],
-      FAMIGLIA: [
-        'Ciao, mi dispiace ma devo disdire: è subentrato un imprevisto familiare urgente.',
-        'Ciao, ho un impegno in famiglia che non posso rimandare e non potrò esserci. Divertitevi!',
-        'Ciao, mi scuso per il breve preavviso: devo accompagnare un familiare a una visita. Recuperiamo presto.'
-      ],
-      SALUTE: [
-        'Ciao, mi sono svegliato con febbre e mal di gola: meglio non rischiare di contagiare nessuno.',
-        'Ciao, ho un attacco d’allergia forte e oggi devo fermarmi. Appena sto meglio recupero.',
-        'Ciao, hanno anticipato una visita medica e devo andarci oggi pomeriggio.'
-      ],
-      APPUNTAMENTO: [
-        'Ciao, mi dispiace ma devo annullare l’appuntamento di [data/ora] per un imprevisto. Possiamo riprogrammare?',
-        'C’è stata una sovrapposizione di impegni e non riesco a rispettare l’orario: ti va di fissare un’alternativa?',
-        'Purtroppo è subentrata una situazione urgente: posso proporre un’altra data che vada bene a entrambi?'
-      ],
-      ESAME: [
-        'Ciao, mi dispiace per il ritardo: sono rimasto bloccato nel traffico per un incidente e non sono riuscito ad arrivare prima.',
-        'Ciao, mi dispiace per il ritardo: sono rimasta bloccata nel traffico per un incidente e non sono riuscita ad arrivare prima.'
-      ]
-      // I modelli TRAFFICO/RIUNIONE/CONNESSIONE restano gestiti lato server
-    };
+<script>
+  const payBtn = document.getElementById("payBtn");
+  const errBox = document.getElementById("err");
 
-    const params = new URL(location.href).searchParams;
-    const sku = params.get('sku') || 'SCUSA_BASE';
-    document.getElementById('skuLabel').textContent = 'Prodotto: ' + sku;
+  function showErr(msg) {
+    errBox.style.display = "block";
+    errBox.textContent = msg;
+  }
+  function clearErr() {
+    errBox.style.display = "none";
+    errBox.textContent = "";
+  }
 
-    const contextKnown = document.getElementById('context-known');
-    const contextFree = document.getElementById('context-free');
+  payBtn.addEventListener("click", async () => {
+    clearErr();
+    payBtn.disabled = true;
 
-    if (sku === 'SCUSA_BASE') {
-      contextKnown.style.display = 'block';
-    } else {
-      contextFree.style.display = 'block';
-    }
+    try {
+      const sku = document.getElementById("sku").value;
+      const context = document.getElementById("context").value;
+      const message = document.getElementById("message").value.trim();
+      const details = document.getElementById("details").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const promo = document.getElementById("promo").value.trim();
 
-    document.getElementById('pay').addEventListener('click', async () => {
-      const email = document.getElementById('email').value.trim();
-      const details = document.getElementById('details').value.trim();
-      const msg = document.getElementById('msg');
-
-      let contextValue = '';
-      if (sku === 'SCUSA_BASE') {
-        contextValue = document.getElementById('contextSelect').value;
-      } else {
-        contextValue = document.getElementById('context').value.trim();
+      if (!email || !email.includes("@")) {
+        throw new Error("Inserisci una email valida.");
+      }
+      if (!context) {
+        throw new Error("Seleziona un contesto.");
       }
 
-      if (!email) {
-        msg.textContent = 'Inserisci email';
-        return;
-      }
+      const body = { sku, context, message, details, email, promo };
 
-      msg.textContent = 'Creo sessione di pagamento…';
-
-      const body = {
-        sku,
-        email,
-        context: contextValue,
-        details
-        // il campo promo non viene usato lato server: promo nascosta COLPAMIA10
-      };
-
-      const r = await fetch('/.netlify/functions/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+      const res = await fetch("/.netlify/functions/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
-      const out = await r.json().catch(() => ({}));
-      if (!r.ok || out.error) {
-        msg.textContent = out.error || ('Errore HTTP ' + r.status);
-        return;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Errore nella creazione del checkout.");
       }
-      location.href = out.url;
-    });
-  </script>
+
+      if (!data.url) {
+        throw new Error("Checkout non disponibile: url mancante.");
+      }
+
+      window.location.href = data.url;
+    } catch (e) {
+      showErr(e.message || String(e));
+      payBtn.disabled = false;
+    }
+  });
+</script>
+
 </body>
 </html>
