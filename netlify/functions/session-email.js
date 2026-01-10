@@ -1,22 +1,16 @@
 // netlify/functions/session-email.js
-//
-// Invio email scusa dopo pagamento.
-// - Recupera Checkout Session Stripe
-// - Genera la scusa con OpenAI usando CONTEXT + DETAILS (integrati nel testo, no etichette)
-// - DIFFERENZIAZIONE FORTE: "divertente" deve far sorridere davvero (vincoli comici + QA + retry)
-// - Invia email via SMTP (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS + FROM_EMAIL)
-//
-// Supporta:
-// - GET  /.netlify/functions/session-email?session_id=...
-// - POST { sessionId: "..." } oppure { session_id: "..." }
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require("nodemailer");
 
+// Node 18+ ha fetch globale su Netlify runtime
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
 const json = (statusCode, body) => ({
@@ -28,23 +22,12 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-function clean(s) {
-  return (s ?? "").toString().trim();
-}
-function lower(s) {
-  return clean(s).toLowerCase();
+function requireEnv(name) {
+  if (!process.env[name]) throw new Error(`${name} mancante`);
 }
 
 function validateStripeConfig() {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("Configurazione Stripe mancante: STRIPE_SECRET_KEY non impostata");
-  }
-}
-
-function validateOpenAIConfig() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("Configurazione OpenAI mancante: OPENAI_API_KEY non impostata");
-  }
+  requireEnv("STRIPE_SECRET_KEY");
 }
 
 function validateSmtpConfig() {
@@ -54,6 +37,7 @@ function validateSmtpConfig() {
   if (!process.env.SMTP_USER) missing.push("SMTP_USER");
   if (!process.env.SMTP_PASS) missing.push("SMTP_PASS");
   if (!process.env.FROM_EMAIL) missing.push("FROM_EMAIL");
+
   if (missing.length) {
     throw new Error("Configurazione SMTP incompleta. Mancano: " + missing.join(", "));
   }
@@ -61,11 +45,10 @@ function validateSmtpConfig() {
 
 function createTransport() {
   validateSmtpConfig();
-  const port = Number(process.env.SMTP_PORT || 587);
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port,
-    secure: port === 465,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: Number(process.env.SMTP_PORT) === 465,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -73,359 +56,328 @@ function createTransport() {
   });
 }
 
-// Compatibilità SKU vecchi -> nuovi
 function normalizeSku(rawSku) {
-  const s = clean(rawSku);
-  if (!s) return "base";
+  const s = (rawSku || "").trim();
 
-  const u = s.toUpperCase();
-  if (u === "SCUSA_DIVERTENTE") return "divertente";
-  if (u === "SCUSA_PREMIUM") return "premium";
-  if (u === "SCUSA_BUSINESS") return "business";
-  if (u === "SCUSA_BASE") return "base";
+  // accetta sia nuovi che vecchi formati
+  const map = {
+    SCUSA_BASE: "base",
+    SCUSA_PREMIUM: "premium",
+    SCUSA_BUSINESS: "business",
+    SCUSA_DIVERTENTE: "divertente",
+  };
 
-  const l = lower(s);
-  if (["base", "premium", "business", "divertente"].includes(l)) return l;
+  if (map[s]) return map[s];
 
-  return "base";
+  // accetta già normalizzati
+  const lower = s.toLowerCase();
+  if (["base", "premium", "business", "divertente"].includes(lower)) return lower;
+
+  // fallback ragionevole
+  return "premium";
 }
 
-function normalizeContext(rawContext) {
-  const c = clean(rawContext);
-  return c.replace(/^DIVERTENTE_/, "");
+function sanitizeText(t) {
+  return (t || "")
+    .replace(/\r/g, "")
+    .replace(/\t/g, " ")
+    .replace(/[ ]{2,}/g, " ")
+    .trim();
 }
 
-function buildEmailSubject(sku) {
-  if (sku === "premium") return "La tua scusa premium — COLPA MIA";
-  if (sku === "business") return "La tua scusa business — COLPA MIA";
-  if (sku === "divertente") return "La tua scusa divertente — COLPA MIA";
-  return "La tua scusa — COLPA MIA";
+function buildUserBrief({ context, message, details }) {
+  const ctx = sanitizeText(context);
+  const msg = sanitizeText(message);
+  const det = sanitizeText(details);
+
+  // Il brief NON deve diventare "Contesto: ... Dettagli: ..."
+  // Deve solo dare materiale all’AI da integrare naturalmente.
+  const parts = [];
+  if (ctx) parts.push(`Scenario: ${ctx}.`);
+  if (msg) parts.push(`Situazione: ${msg}.`);
+  if (det) parts.push(`Dettagli utili da integrare: ${det}.`);
+  return parts.join(" ");
 }
 
-function buildPrompt({ sku, context, details, message, strict }) {
-  const isFunny = sku === "divertente";
+function subjectBySku(sku) {
+  if (sku === "divertente") return "La tua scusa divertente – COLPA MIA";
+  if (sku === "business") return "La tua scusa business – COLPA MIA";
+  if (sku === "premium") return "La tua scusa premium – COLPA MIA";
+  return "La tua scusa – COLPA MIA";
+}
 
-  const tone =
-    sku === "business"
-      ? "professionale, credibile, concreto"
-      : sku === "premium"
-      ? "curato, elegante, empatico"
-      : isFunny
-      ? "molto divertente, ironico, brillante (non volgare), comunque credibile"
-      : "semplice, naturale, credibile";
+function promptBySku(sku, brief) {
+  // Regole comuni: non mostrare “contesto/dettagli”, integrarli nel testo.
+  const commonRules = `
+SCRIVI IN ITALIANO.
+Non inserire etichette tipo "Contesto:", "Dettagli:", "Note:" o simili.
+Integra SEMPRE scenario e dettagli nel corpo della scusa in modo naturale (senza appendici).
+Non usare placeholder tipo [nome], [data], [ora].
+Non inventare marchi/aziende reali se non necessari.
+Consegna SOLO il testo della scusa, senza spiegazioni.
+`.trim();
 
-  const strictBlock = strict
-    ? `
-VINCOLI OBBLIGATORI:
-- NON usare etichette come "Contesto:" o "Dettagli:".
-- NON scrivere frasi meta tipo "ti invio una bozza", "scusa strutturata", "calibrata".
-- Il contesto deve emergere chiaramente nella scusa (ambientazione/azione coerente).
-- I dettagli devono comparire come fatti dentro la scusa (non in nota finale).
-- Niente elenchi puntati, niente titoli: solo testo pronto da copiare.
-`
-    : "";
+  if (sku === "base") {
+    return `
+Sei un generatore di scuse credibili per la vita quotidiana.
+Obiettivo: una scusa naturale, realistica, semplice, che non sembri scritta da un avvocato.
 
-  const funnyBlock = isFunny
-    ? `
-VINCOLI COMICI (OBBLIGATORI):
-- Deve far sorridere: inserisci ALMENO 1 tra: personificazione (oggetti che parlano), iperbole, analogia assurda ma comprensibile, micro-colpo di scena.
-- Deve restare plausibile: chiudi con una proposta concreta (rimedio) e un tono “ci tengo”.
-- Vietato essere “troppo educato/aziendale”: niente stile formale.
-- Evita battute da boomer: comicità moderna e secca.
-`
-    : "";
+${commonRules}
 
+Vincoli:
+- Lunghezza: 70–120 parole.
+- Tono: colloquiale, umano, non troppo formale.
+- Deve contenere 1 dettaglio specifico dal brief (senza citarlo come "dettaglio").
+- Chiudi con una proposta breve (es. recuperiamo domani / ti aggiorno tra poco).
+
+BRIEF:
+${brief}
+`.trim();
+  }
+
+  if (sku === "premium") {
+    return `
+Sei un copywriter empatico: scrivi una scusa curata, densa, “scritta bene”, credibile.
+Obiettivo: far percepire attenzione e rispetto, mantenendo il rapporto.
+
+${commonRules}
+
+Vincoli:
+- Lunghezza: 140–220 parole.
+- Tono: elegante, empatico, maturo (non formale rigido).
+- Integra almeno 2 elementi dal brief (scenario + 1 dettaglio).
+- Inserisci: (1) scuse + (2) spiegazione plausibile + (3) rimedio concreto + (4) proposta di alternativa.
+- Niente frasi vuote tipo “mi scuso per il disagio” senza contenuto.
+
+BRIEF:
+${brief}
+`.trim();
+  }
+
+  if (sku === "business") {
+    return `
+Sei un professionista: scrivi una scusa adatta a lavoro/contesti formali (collega, cliente, responsabile).
+Obiettivo: credibilità, responsabilità, soluzione.
+
+${commonRules}
+
+Vincoli:
+- Lunghezza: 120–190 parole.
+- Registro: professionale, conciso, concreto.
+- Struttura consigliata:
+  1) Apertura breve (saluto neutro)
+  2) Assunzione responsabilità (1 frase)
+  3) Causa plausibile (1–2 frasi)
+  4) Azioni correttive / prossimi passi (2–4 punti in linea, NON elenco puntato)
+  5) Chiusura con disponibilità e firma "Cordiali saluti,"
+- Integra scenario + 1 dettaglio dal brief.
+- Non essere comico.
+
+BRIEF:
+${brief}
+`.trim();
+  }
+
+  // divertente
   return `
-Scrivi UNA scusa in italiano pronta da copiare e incollare.
-Tono: ${tone}.
-Lunghezza: 70–120 parole.
-Voce: prima persona singolare.
+Sei un autore di scuse DIVERTENTI ma PLAUSIBILI.
+Obiettivo: far sorridere davvero senza risultare cringe, mantenendo credibilità.
 
-Contesto scelto dal cliente: ${context || "generico"}.
-Dettagli del cliente da integrare nel testo: ${details || "(nessuno)"}.
-Situazione/extra: ${message || "(vuoto)"}.
+${commonRules}
 
-${strictBlock}
-${funnyBlock}
+Vincoli comici (OBBLIGATORI):
+- Usa 1 meccanismo comico chiaro: iperbole leggera / personificazione / colpo di scena breve.
+- Niente formalismi (vietati: "Gentile", "Cordiali saluti", "mi scuso per il disservizio").
+- Niente volgarità, niente offese, niente umorismo “aggressivo”.
+- Lunghezza: 70–130 parole.
+- Integra scenario + almeno 1 dettaglio del brief dentro la scusa, non in coda.
+- Chiudi con una proposta ironica ma concreta (es. recupero con caffè / ti aggiorno / domani ci sono).
 
-REQUISITI:
-- Deve includere: 1) scusa, 2) motivo credibile, 3) rimedio concreto (proposta recupero).
-- Deve essere sempre diversa: cambia apertura/struttura/lessico.
-- Integra contesto e dettagli dentro la scusa, senza etichette.
-- Se pacchetto divertente: deve contenere almeno 1 elemento comico riconoscibile.
-
-Scrivi SOLO la scusa.
+BRIEF:
+${brief}
 `.trim();
 }
 
-function violatesForbiddenPatterns(text) {
-  const t = lower(text);
-  const forbidden = [
-    "ti invio di seguito",
-    "bozza di scusa",
-    "scusa strutturata",
-    "calibrata",
-    "contesto:",
-    "dettagli:",
-    "dettagli da tenere",
-    "ecco una bozza",
-    "ti lascio una bozza",
-  ];
-  return forbidden.some((f) => t.includes(f));
-}
+async function callOpenAI({ sku, prompt }) {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY mancante");
+  }
 
-function extractDetailTokens(details) {
-  const tokens = lower(details)
-    .split(/\W+/)
-    .filter((w) => w.length >= 4)
-    .slice(0, 12);
-  return [...new Set(tokens)];
-}
-
-function integratesDetails(text, detailTokens) {
-  if (!detailTokens.length) return true;
-  const t = lower(text);
-  return detailTokens.some((tok) => t.includes(tok));
-}
-
-// Heuristica: "divertente" deve avere almeno un segnale comico riconoscibile
-function isActuallyFunny(text) {
-  const t = lower(text);
-  const markers = [
-    "divano",
-    "ticket",
-    "assistenza",
-    "riavvio",
-    "aggiornamento",
-    "plot twist",
-    "scherzo",
-    "mi ha guardato",
-    "ha deciso",
-    "ha aperto",
-    "in sciopero",
-    "in ferie",
-    "in lutto",
-    "dramma",
-    "tragico",
-    "surreale",
-    "google maps",
-    "tour turistico",
-    "frigo",
-    "reality",
-    "orologio",
-    "cervello",
-    "motivazione",
-  ];
-  if (markers.some((m) => t.includes(m))) return true;
-  if (/😅|😂|🤣/.test(text)) return true;
-  // presenza di un giro di frase ironico comune
-  if (/(e niente|quindi sì|morale|plot|praticamente)/i.test(text)) return true;
-  return false;
-}
-
-function diversityScore(candidate, reference) {
-  const a = new Set(lower(candidate).split(/\W+/).filter((w) => w.length >= 4));
-  const b = new Set(lower(reference).split(/\W+/).filter((w) => w.length >= 4));
-  if (!a.size) return 0;
-  let overlap = 0;
-  for (const w of a) if (b.has(w)) overlap++;
-  return 1 - overlap / Math.max(1, a.size);
-}
-
-async function callOpenAI({ prompt, sku }) {
-  const isFunny = sku === "divertente";
-
-  const payload = {
-    model: "gpt-4.1-mini",
-    // parametri più “inventivi” per divertente
-    temperature: isFunny ? 1.25 : 1.03,
-    top_p: 0.9,
-    presence_penalty: isFunny ? 0.85 : 0.55,
-    frequency_penalty: 0.55,
-    n: 3,
-    messages: [
-      {
-        role: "system",
-        content:
-          "Sei un copywriter italiano. Scrivi scuse credibili, naturali e varie. Niente meta-commenti, niente etichette.",
-      },
-      { role: "user", content: prompt },
-    ],
+  // Parametri realmente diversi per profondità/tono
+  const paramsBySku = {
+    base: {
+      temperature: 0.95,
+      top_p: 0.95,
+      presence_penalty: 0.4,
+      frequency_penalty: 0.2,
+    },
+    premium: {
+      temperature: 1.05,
+      top_p: 0.95,
+      presence_penalty: 0.6,
+      frequency_penalty: 0.2,
+    },
+    business: {
+      temperature: 0.7,
+      top_p: 0.9,
+      presence_penalty: 0.2,
+      frequency_penalty: 0.15,
+    },
+    divertente: {
+      temperature: 1.2,
+      top_p: 0.95,
+      presence_penalty: 0.85,
+      frequency_penalty: 0.25,
+    },
   };
 
-  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+  const p = paramsBySku[sku] || paramsBySku.premium;
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      temperature: p.temperature,
+      top_p: p.top_p,
+      presence_penalty: p.presence_penalty,
+      frequency_penalty: p.frequency_penalty,
+      messages: [
+        { role: "system", content: "Sei un generatore di scuse. Segui i vincoli con precisione." },
+        { role: "user", content: prompt },
+      ],
+    }),
   });
 
-  const d = await r.json();
-  if (!r.ok) throw new Error(d?.error?.message || "OpenAI error");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data?.error?.message || "Errore OpenAI";
+    throw new Error(msg);
+  }
 
-  return (d.choices || [])
-    .map((c) => clean(c?.message?.content))
-    .filter(Boolean);
+  const text = data?.choices?.[0]?.message?.content || "";
+  return sanitizeText(text);
 }
 
-async function generateExcuseAI({ sku, context, details, message }) {
-  const detailTokens = extractDetailTokens(details);
-  const reference = `${context}\n${details}\n${message}\n${sku}`;
-
-  // 1) first pass
-  const p1 = buildPrompt({ sku, context, details, message, strict: false });
-  const c1 = await callOpenAI({ prompt: p1, sku });
-
-  let best = c1[0] || "";
-  let bestScore = -1;
-  for (const c of c1) {
-    const s = diversityScore(c, reference);
-    if (s > bestScore) {
-      bestScore = s;
-      best = c;
-    }
-  }
-
-  // QA: vietati + deve integrare dettagli + se divertente deve essere davvero divertente
-  const bad =
-    violatesForbiddenPatterns(best) ||
-    !integratesDetails(best, detailTokens) ||
-    (sku === "divertente" && !isActuallyFunny(best));
-
-  // 2) strict retry
-  if (bad) {
-    const p2 = buildPrompt({ sku, context, details, message, strict: true });
-    const c2 = await callOpenAI({ prompt: p2, sku });
-
-    let best2 = c2[0] || best;
-    let best2Score = -1;
-    for (const c of c2) {
-      const s = diversityScore(c, reference);
-      if (s > best2Score) {
-        best2Score = s;
-        best2 = c;
-      }
-    }
-    best = best2;
-  }
-
-  // last cleanup guard
-  if (violatesForbiddenPatterns(best)) {
-    best = best
-      .replace(/Contesto:\s*.*(\n|$)/gi, "")
-      .replace(/Dettagli:\s*.*(\n|$)/gi, "")
-      .replace(/ti invio.*(\n|$)/gi, "")
-      .replace(/bozza.*(\n|$)/gi, "")
-      .trim();
-  }
-
-  return best;
+function looksTooFormalForFunny(t) {
+  const s = (t || "").toLowerCase();
+  return (
+    s.includes("cordiali saluti") ||
+    s.includes("gentile") ||
+    s.includes("disservizio") ||
+    s.includes("prendo piena responsabilità") ||
+    s.includes("oggetto:")
+  );
 }
 
-function buildEmailHtml(text) {
-  const safe = (text || "")
+function escapeHtml(s) {
+  return String(s || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-
-  return `
-    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.5;color:#111827;">
-      <p>Ciao,</p>
-      <p>ecco la tua scusa pronta da copiare e incollare:</p>
-      <blockquote style="border-left:4px solid #7c6dff;padding-left:12px;margin:12px 0;font-style:italic;white-space:pre-wrap;">
-        ${safe}
-      </blockquote>
-      <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
-    </div>
-  `;
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS_HEADERS, body: "" };
   }
-
-  if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
+  if (event.httpMethod !== "POST") {
     return json(405, { error: "Metodo non consentito" });
   }
 
   try {
     validateStripeConfig();
-    validateOpenAIConfig();
   } catch (e) {
     console.error(e);
     return json(500, { error: e.message });
   }
 
-  // session_id da GET o POST
-  let sessionId = "";
-  if (event.httpMethod === "GET") {
-    sessionId = clean(new URLSearchParams(event.rawQuery || "").get("session_id"));
-  } else {
-    let data = {};
-    try {
-      data = JSON.parse(event.body || "{}");
-    } catch {
-      return json(400, { error: "Body JSON non valido" });
-    }
-    sessionId = clean(data.sessionId || data.session_id || "");
+  let data;
+  try {
+    data = JSON.parse(event.body || "{}");
+  } catch {
+    return json(400, { error: "Body JSON non valido" });
   }
 
-  if (!sessionId) {
-    return json(400, { error: "session_id/sessionId mancante" });
-  }
+  const sessionId = data.sessionId;
+  if (!sessionId) return json(400, { error: "sessionId mancante" });
 
   let session;
   try {
     session = await stripe.checkout.sessions.retrieve(sessionId);
   } catch (err) {
-    console.error("Errore nel recupero sessione Stripe:", err);
+    console.error("Errore recupero sessione Stripe:", err);
     return json(500, { error: "Impossibile recuperare la sessione di pagamento da Stripe." });
   }
 
   const metadata = session.metadata || {};
-  const customerDetails = session.customer_details || {};
+  const sku = normalizeSku(metadata.sku);
+  const context = metadata.context || "";
+  const message = metadata.message || "";
+  const details = metadata.details || "";
 
-  const sku = normalizeSku(metadata.sku || metadata.plan);
-  const context = normalizeContext(metadata.context || "");
-  const details = clean(metadata.details || "");
-  const message = clean(metadata.message || metadata.notes || "");
-  const email = clean(metadata.email || customerDetails.email || "");
+  const customerDetails = session.customer_details || {};
+  const email = metadata.email || customerDetails.email;
 
   if (!email) {
-    return json(400, {
-      error: "Email non presente nei metadata/sessione. Contattaci e indica il tuo ordine.",
-    });
+    return json(400, { error: "Email non presente nei metadata/sessione. Contattaci indicando il tuo ordine." });
   }
 
-  // Generazione AI (sempre)
-  let excuse;
+  const brief = buildUserBrief({ context, message, details });
+  const subject = subjectBySku(sku);
+
+  // Generazione AI con logiche diverse
+  let excuseText = "";
   try {
-    excuse = await generateExcuseAI({ sku, context, details, message });
-  } catch (err) {
-    console.error("Errore OpenAI:", err);
-    return json(500, { error: "Errore generazione AI: " + (err.message || "errore sconosciuto") });
+    if (sku === "divertente") {
+      // 2 tentativi per evitare che esca “premium mascherata”
+      for (let i = 0; i < 2; i++) {
+        const prompt = promptBySku("divertente", brief);
+        const candidate = await callOpenAI({ sku: "divertente", prompt });
+        if (!looksTooFormalForFunny(candidate)) {
+          excuseText = candidate;
+          break;
+        }
+        excuseText = candidate; // fallback
+      }
+    } else {
+      const prompt = promptBySku(sku, brief);
+      excuseText = await callOpenAI({ sku, prompt });
+    }
+  } catch (e) {
+    console.error("Errore generazione AI:", e);
+    return json(500, { error: "Errore durante la generazione AI della scusa: " + e.message });
   }
 
-  // Invio email via SMTP (come prima)
+  // Invio email
   let transporter;
   try {
     transporter = createTransport();
   } catch (e) {
-    console.error("Errore configurazione SMTP:", e);
+    console.error("Errore SMTP:", e);
     return json(500, { error: e.message });
   }
 
-  const subject = buildEmailSubject(sku);
+  const safeText = escapeHtml(excuseText);
 
   const mailOptions = {
     from: process.env.FROM_EMAIL || "no-reply@colpamia.com",
     to: email,
     subject,
-    text: excuse,
-    html: buildEmailHtml(excuse),
+    text: excuseText,
+    html: `
+      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.55;color:#111827;">
+        <p>Ciao,</p>
+        <p>ecco la tua scusa pronta da copiare e incollare:</p>
+        <blockquote style="border-left:4px solid #7c3aed;padding-left:12px;margin:12px 0;font-style:italic;white-space:pre-wrap;">
+          ${safeText}
+        </blockquote>
+        <p>Grazie per aver scelto <strong>COLPA MIA</strong>.</p>
+      </div>
+    `,
   };
 
   try {
@@ -433,8 +385,6 @@ exports.handler = async (event) => {
     return json(200, { ok: true });
   } catch (err) {
     console.error("Errore invio email:", err);
-    return json(500, {
-      error: "Errore durante l'invio della mail: " + (err.message || "errore sconosciuto"),
-    });
+    return json(500, { error: "Errore durante l'invio della mail: " + (err.message || "errore sconosciuto") });
   }
 };
