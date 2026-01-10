@@ -1,149 +1,126 @@
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <title>COLPA MIA – Catalogo scuse</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    body { margin:0; background:#050712; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    header { background:#111827; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; }
-    header .logo { font-size:20px; font-weight:700; }
-    header .tagline { font-size:13px; color:#9ca3af; }
-    .hero { padding:24px 16px; background:linear-gradient(135deg,#111827,#312e81); color:#e5e7eb; }
-    .hero h1 { margin:0 0 8px; font-size:26px; }
-    .hero p { margin:0; font-size:14px; max-width:600px; }
-    .container { max-width:1100px; margin:0 auto; padding:16px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
-    .card { background:#0b1020; border:1px solid #1f2937; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
-    .card-media { height:170px; display:flex; align-items:flex-end; padding:10px 12px; }
-    .card-media span { font-size:32px; }
-    .card-media-base { background:radial-gradient(circle at 20% 20%,#fbbf24,#b45309 45%,#111827 70%); }
-    .card-media-premium { background:radial-gradient(circle at 20% 20%,#a855f7,#1d4ed8 45%,#020617 70%); }
-    .card-media-business { background:linear-gradient(135deg,#111827,#4b5563); }
-    .card-media-fun { background:radial-gradient(circle at 20% 20%,#22c55e,#f97316 45%,#020617 70%); }
-    .card-body { padding:12px 14px 16px; flex:1; display:flex; flex-direction:column; }
-    .card-title { font-size:16px; font-weight:600; margin-bottom:4px; }
-    .card-desc { font-size:13px; color:#9ca3af; margin-bottom:8px; }
-    .card-price { font-size:15px; font-weight:700; margin-bottom:4px; }
-    .card-meta { font-size:12px; color:#9ca3af; margin-bottom:10px; }
-    .card button { margin-top:auto; background:#7c6dff; border:0; border-radius:8px; color:#fff; font-weight:600; padding:8px 12px; cursor:pointer; width:100%; }
-    .section-title { font-size:18px; font-weight:600; margin:16px 0 8px; }
-    a { color:#93c5fd; text-decoration:none; }
-    footer { font-size:11px; color:#6b7280; text-align:center; padding:16px; border-top:1px solid #111827; margin-top:24px; }
-  </style>
-</head>
-<body>
-  <header>
-    <div>
-      <div class="logo">COLPA MIA</div>
-      <div class="tagline">L’agenzia di scuse su commissione</div>
-    </div>
-    <div style="font-size:12px;color:#9ca3af;">
-      ogni scusa, tempo guadagnato ⏱
-    </div>
-  </header>
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background: #0b1020;
+    color: #e9ecff;
+  }
 
-  <section class="hero">
-    <div class="container">
-      <h1>Se devi dire «scusa», ci pensiamo noi.</h1>
-      <p>
-        Scegli il pacchetto, raccontaci il contesto, paga in pochi secondi.
-        Ricevi via mail una scusa costruita su misura, pronta da copiare e incollare.
-      </p>
-    </div>
-  </section>
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 18px;
+  }
 
-  <main class="container">
-    <h2 class="section-title">Scuse principali</h2>
-    <div class="grid">
-      <!-- SCUSA BASE -->
-      <div class="card">
-        <div class="card-media card-media-base">
-          <span>🍽️</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA BASE</div>
-          <div class="card-desc">
-            La scusa essenziale per cene, appuntamenti, calcetto e piccoli impegni.
-            Perfetta quando devi solo tirarti elegantemente indietro.
-          </div>
-          <div class="card-price">da 1 €</div>
-          <div class="card-meta">Consegna via email in pochi minuti.</div>
-          <button onclick="goCheckout('SCUSA_BASE')">Acquista</button>
-        </div>
-      </div>
+  h1 {
+    font-size: 34px;
+    margin-bottom: 12px;
+  }
 
-      <!-- SCUSA PREMIUM -->
-      <div class="card">
-        <div class="card-media card-media-premium">
-          <span>⭐</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA PREMIUM</div>
-          <div class="card-desc">
-            Scuse più articolate, tono calibrato (formale/informale),
-            perfette per lavoro, eventi importanti e relazioni delicate.
-          </div>
-          <div class="card-price">da 7,90 €</div>
-          <div class="card-meta">Struttura personalizzata e più varianti.</div>
-          <button onclick="goCheckout('SCUSA_PREMIUM')">Acquista</button>
-        </div>
-      </div>
+  p {
+    opacity: 0.85;
+  }
 
-      <!-- SCUSA BUSINESS -->
-      <div class="card">
-        <div class="card-media card-media-business">
-          <span>💼</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA BUSINESS</div>
-          <div class="card-desc">
-            Per aziende, freelance e professionisti: scuse eleganti e credibili,
-            adatte a clienti, fornitori e riunioni mancate.
-          </div>
-          <div class="card-price">da 19,90 €</div>
-          <div class="card-meta">Linguaggio business, gestione di casi complessi.</div>
-          <button onclick="goCheckout('SCUSA_BUSINESS')">Acquista</button>
-        </div>
-      </div>
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 22px;
+    margin-top: 32px;
+  }
 
-      <!-- SCUSA DIVERTENTE -->
-      <div class="card">
-        <div class="card-media card-media-fun">
-          <span>😂</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA DIVERTENTE</div>
-          <div class="card-desc">
-            Scuse ironiche e leggere per amici, gruppi e chat.
-            Il motore le genera per te e le ricevi via mail.
-          </div>
-          <div class="card-price">1 € a scusa</div>
-          <div class="card-meta">Perfetta per il gruppo calcetto, la chat amici, i meme.</div>
-          <button onclick="goDivertente()">Vai alla sezione divertente</button>
-        </div>
-      </div>
-    </div>
+  .card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
 
-    <h2 class="section-title">Sezione divertente</h2>
-    <p style="font-size:13px;color:#9ca3af;">
-      Vuoi solo una scusa ironica da mandare in chat?<br>
-      <a href="/divertente.html">Prova il generatore di scuse divertenti</a>: ogni scusa costa 1 €.
-    </p>
-  </main>
+  .card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(0,0,0,.35);
+  }
 
-  <footer>
-    COLPA MIA © <span id="year"></span> – Agenzia di scuse su commissione.
-  </footer>
+  /* ========= IMMAGINI PACCHETTI ========= */
 
-  <script>
-    function goCheckout(sku) {
-      window.location.href = '/checkout.html?sku=' + encodeURIComponent(sku);
-    }
-    function goDivertente() {
-      window.location.href = '/divertente.html';
-    }
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
-</body>
-</html>
+  .card-media {
+    height: 170px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+  }
+
+  .card-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0,0,0,0.15),
+      rgba(0,0,0,0.65)
+    );
+  }
+
+  /* SCUSA BASE – situazione quotidiana */
+  .card-media-base {
+    background-image: url("https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80");
+  }
+
+  /* SCUSA PREMIUM – tono curato, empatico */
+  .card-media-premium {
+    background-image: url("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80");
+  }
+
+  /* SCUSA BUSINESS – contesto professionale */
+  .card-media-business {
+    background-image: url("https://images.unsplash.com/photo-1523958203904-cdcb402031fd?auto=format&fit=crop&w=1200&q=80");
+  }
+
+  /* SCUSA DIVERTENTE – ironia, leggerezza */
+  .card-media-fun {
+    background-image: url("https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1200&q=80");
+  }
+
+  /* ========= CONTENUTO CARD ========= */
+
+  .card-content {
+    padding: 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .badge {
+    align-self: flex-start;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(124,58,237,.2);
+    border: 1px solid rgba(124,58,237,.4);
+  }
+
+  .price {
+    font-size: 22px;
+    font-weight: 700;
+    margin-top: auto;
+  }
+
+  .btn {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    background: #7c3aed;
+    color: white;
+    font-weight: 700;
+    transition: background .2s ease;
+  }
+
+  .btn:hover {
+    background: #6d28d9;
+  }
+</style>
