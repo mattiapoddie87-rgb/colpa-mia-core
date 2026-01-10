@@ -1,126 +1,330 @@
-<style>
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    background: #0b1020;
-    color: #e9ecff;
-  }
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>COLPA MIA — Catalogo</title>
 
-  .wrap {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 32px 18px;
-  }
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.12);
+      --text:#e9ecff;
+      --muted:rgba(233,236,255,.78);
+      --accent:#7c3aed;
+      --accent2:#6d28d9;
+      --shadow:0 20px 40px rgba(0,0,0,.35);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:34px 18px 48px;
+    }
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      width:max-content;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(124,58,237,.18);
+      border:1px solid rgba(124,58,237,.35);
+      font-size:12px;
+      color:rgba(233,236,255,.92);
+    }
+    h1{
+      margin:0;
+      font-size:34px;
+      letter-spacing:-0.02em;
+      line-height:1.15;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      max-width:760px;
+      line-height:1.45;
+    }
 
-  h1 {
-    font-size: 34px;
-    margin-bottom: 12px;
-  }
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:22px;
+      margin-top:26px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+      min-height:420px;
+    }
+    .card:hover{
+      transform:translateY(-6px);
+      box-shadow:var(--shadow);
+      border-color:rgba(255,255,255,.18);
+    }
 
-  p {
-    opacity: 0.85;
-  }
+    .media{
+      height:175px;
+      background-size:cover;
+      background-position:center;
+      position:relative;
+    }
+    .media::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(to bottom, rgba(0,0,0,.12), rgba(0,0,0,.65));
+    }
+    .tag{
+      position:absolute;
+      left:14px;
+      top:14px;
+      z-index:2;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 11px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.20);
+      backdrop-filter: blur(6px);
+    }
 
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 22px;
-    margin-top: 32px;
-  }
+    /* ===== IMMAGINI PACCHETTI ===== */
+    .media-base{
+      background-image:url("https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1400&q=80");
+    }
+    .media-premium{
+      background-image:url("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1400&q=80");
+    }
+    .media-business{
+      background-image:url("https://images.unsplash.com/photo-1523958203904-cdcb402031fd?auto=format&fit=crop&w=1400&q=80");
+    }
+    .media-fun{
+      background-image:url("https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1400&q=80");
+    }
 
-  .card {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 18px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: transform .25s ease, box-shadow .25s ease;
-  }
+    .content{
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      flex:1;
+    }
+    .title{
+      margin:0;
+      font-size:20px;
+      letter-spacing:-0.01em;
+    }
+    .desc{
+      margin:0;
+      color:var(--muted);
+      line-height:1.45;
+      font-size:14px;
+    }
+    .bullets{
+      margin:8px 0 0;
+      padding:0 0 0 18px;
+      color:rgba(233,236,255,.82);
+      font-size:13px;
+      line-height:1.5;
+    }
+    .bullets li{ margin:6px 0; }
 
-  .card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 40px rgba(0,0,0,.35);
-  }
+    .priceRow{
+      margin-top:auto;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .price{
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:-0.02em;
+    }
+    .small{
+      font-size:12px;
+      color:rgba(233,236,255,.70);
+    }
 
-  /* ========= IMMAGINI PACCHETTI ========= */
+    .btn{
+      margin-top:14px;
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:0;
+      background:var(--accent);
+      color:#fff;
+      font-weight:800;
+      cursor:pointer;
+      transition:background .18s ease, transform .18s ease;
+    }
+    .btn:hover{ background:var(--accent2); }
+    .btn:active{ transform:translateY(1px); }
 
-  .card-media {
-    height: 170px;
-    background-size: cover;
-    background-position: center;
-    position: relative;
-  }
+    .footer{
+      margin-top:26px;
+      color:rgba(233,236,255,.62);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .footer a{ color:rgba(233,236,255,.82); }
 
-  .card-media::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(0,0,0,0.15),
-      rgba(0,0,0,0.65)
-    );
-  }
+    @media (max-width:540px){
+      h1{font-size:28px}
+      .media{height:165px}
+      .card{min-height:410px}
+    }
+  </style>
+</head>
 
-  /* SCUSA BASE – situazione quotidiana */
-  .card-media-base {
-    background-image: url("https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80");
-  }
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="chip">Catalogo COLPA MIA</span>
+        <h1>Scegli il pacchetto, poi personalizzi. La scusa arriva via email.</h1>
+        <p class="subtitle">
+          Ogni scusa è generata da AI in base al contesto e ai dettagli che inserisci. I pacchetti cambiano tono e obiettivo:
+          credibile, curato, professionale o divertente.
+        </p>
+      </div>
+    </div>
 
-  /* SCUSA PREMIUM – tono curato, empatico */
-  .card-media-premium {
-    background-image: url("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80");
-  }
+    <div class="cards">
+      <!-- BASE -->
+      <div class="card">
+        <div class="media media-base">
+          <div class="tag">Base · credibile</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Base</h2>
+          <p class="desc">Perfetta per situazioni quotidiane: semplice, naturale, senza fronzoli.</p>
+          <ul class="bullets">
+            <li>Tono realistico e diretto</li>
+            <li>Integra contesto + dettagli in modo naturale</li>
+            <li>Pronta da copiare e incollare</li>
+          </ul>
+          <div class="priceRow">
+            <div>
+              <div class="price">€1</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+          <button class="btn" onclick="goCheckout('SCUSA_BASE')">Scegli Base</button>
+        </div>
+      </div>
 
-  /* SCUSA BUSINESS – contesto professionale */
-  .card-media-business {
-    background-image: url("https://images.unsplash.com/photo-1523958203904-cdcb402031fd?auto=format&fit=crop&w=1200&q=80");
-  }
+      <!-- PREMIUM -->
+      <div class="card">
+        <div class="media media-premium">
+          <div class="tag">Premium · curata</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Premium</h2>
+          <p class="desc">Più empatica e “scritta bene”: ideale quando vuoi mantenere rapporto e immagine.</p>
+          <ul class="bullets">
+            <li>Tono elegante ed empatico</li>
+            <li>Motivazione credibile + rimedio concreto</li>
+            <li>Testo più denso e rifinito</li>
+          </ul>
+          <div class="priceRow">
+            <div>
+              <div class="price">€3</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+          <button class="btn" onclick="goCheckout('SCUSA_PREMIUM')">Scegli Premium</button>
+        </div>
+      </div>
 
-  /* SCUSA DIVERTENTE – ironia, leggerezza */
-  .card-media-fun {
-    background-image: url("https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1200&q=80");
-  }
+      <!-- BUSINESS -->
+      <div class="card">
+        <div class="media media-business">
+          <div class="tag">Business · professionale</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Business</h2>
+          <p class="desc">Per lavoro e contesti formali: chiara, solida, con responsabilità e soluzione.</p>
+          <ul class="bullets">
+            <li>Stile professionale e credibile</li>
+            <li>Zero “frasi da bozza”, solo contenuto utile</li>
+            <li>Perfetta per mail o messaggi a clienti/colleghi</li>
+          </ul>
+          <div class="priceRow">
+            <div>
+              <div class="price">€5</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+          <button class="btn" onclick="goCheckout('SCUSA_BUSINESS')">Scegli Business</button>
+        </div>
+      </div>
 
-  /* ========= CONTENUTO CARD ========= */
+      <!-- DIVERTENTE -->
+      <div class="card">
+        <div class="media media-fun">
+          <div class="tag">Divertente · fa ridere</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Divertente</h2>
+          <p class="desc">Ironica, brillante, mai volgare: perfetta per amici e situazioni leggere.</p>
+          <ul class="bullets">
+            <li>Meccanismo comico obbligatorio (AI)</li>
+            <li>Resta plausibile e include un rimedio</li>
+            <li>Integra contesto + dettagli senza “note finali”</li>
+          </ul>
+          <div class="priceRow">
+            <div>
+              <div class="price">€2</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+          <button class="btn" onclick="goCheckout('SCUSA_DIVERTENTE')">Scegli Divertente</button>
+        </div>
+      </div>
+    </div>
 
-  .card-content {
-    padding: 18px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+    <div class="footer">
+      <div>
+        Nota: dopo la scelta del pacchetto verrai portato alla pagina di checkout per inserire contesto, dettagli ed email.
+      </div>
+    </div>
+  </div>
 
-  .badge {
-    align-self: flex-start;
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(124,58,237,.2);
-    border: 1px solid rgba(124,58,237,.4);
-  }
-
-  .price {
-    font-size: 22px;
-    font-weight: 700;
-    margin-top: auto;
-  }
-
-  .btn {
-    margin-top: 14px;
-    padding: 12px;
-    border-radius: 12px;
-    border: none;
-    cursor: pointer;
-    background: #7c3aed;
-    color: white;
-    font-weight: 700;
-    transition: background .2s ease;
-  }
-
-  .btn:hover {
-    background: #6d28d9;
-  }
-</style>
+  <script>
+    function goCheckout(sku){
+      // Redirect al flusso di pagamento con lo SKU
+      window.location.href = "/checkout.html?sku=" + encodeURIComponent(sku);
+    }
+  </script>
+</body>
+</html>
