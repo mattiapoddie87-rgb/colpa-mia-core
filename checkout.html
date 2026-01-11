@@ -3,47 +3,95 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>COLPA MIA — Generatore automatico</title>
+  <title>COLPA MIA — Checkout</title>
   <style>
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b1020; color:#e9ecff; }
+    :root{
+      --bg:#0b1020;
+      --text:#e9ecff;
+      --muted:rgba(233,236,255,0.82);
+      --card:rgba(255,255,255,0.06);
+      --border:rgba(255,255,255,0.12);
+      --accent:#7c3aed;
+      --accent2:#6d28d9;
+      --danger:#fecaca;
+      --r:16px;
+    }
+    *{box-sizing:border-box}
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
     .wrap { max-width: 980px; margin: 0 auto; padding: 28px 18px; }
     .grid { display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; }
-    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 18px; }
-    .chip { display:inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(124,58,237,.18); border: 1px solid rgba(124,58,237,.35); font-size: 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; }
+    .chip { display:inline-flex; align-items:center; gap:8px; padding: 6px 10px; border-radius: 999px; font-size: 12px; border: 1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.18); }
     h1 { margin: 10px 0 8px; font-size: 28px; letter-spacing: -0.02em; }
-    p { margin: 0 0 14px; color: rgba(233,236,255,0.82); }
+    p { margin: 0 0 14px; color: var(--muted); line-height:1.45; }
     label { display:block; font-size: 13px; margin: 12px 0 6px; color: rgba(233,236,255,0.92); }
     input, select, textarea {
       width: 100%; box-sizing: border-box;
       padding: 12px 12px; border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(0,0,0,0.28); color:#e9ecff;
+      background: rgba(0,0,0,0.28); color:var(--text);
       outline: none;
     }
     textarea { min-height: 86px; resize: vertical; }
-    .note { font-size: 12px; color: rgba(233,236,255,0.70); margin-top: 6px; }
+    .note { font-size: 12px; color: rgba(233,236,255,0.70); margin-top: 6px; line-height:1.4; }
     .rightBox { display:flex; flex-direction:column; gap: 12px; }
+
     .hero {
-      height: 180px; border-radius: 16px;
-      background: radial-gradient( circle at 30% 25%, rgba(34,197,94,.55), transparent 55%),
-                  radial-gradient( circle at 70% 60%, rgba(249,115,22,.55), transparent 55%),
-                  rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.10);
+      height: 190px; border-radius: var(--r);
+      border: 1px solid var(--border);
       position: relative;
+      overflow:hidden;
+      background-size: cover;
+      background-position: center;
     }
-    .emoji { position:absolute; left: 14px; bottom: 10px; font-size: 34px; }
+    .hero::after{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0.72));
+    }
+    .heroTitle{
+      position:absolute; left:14px; bottom:14px; right:14px;
+      z-index:2;
+    }
+    .heroTitle strong{ display:block; font-size:18px; letter-spacing:-0.01em; }
+    .heroTitle span{ display:block; font-size:12px; color:rgba(233,236,255,0.82); margin-top:4px; }
+
+    .pricePill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.22);
+      font-size:12px;
+      margin-left:10px;
+    }
+
     button {
       width:100%;
       padding: 12px 14px;
       border-radius: 12px;
       border: 0;
-      background: #7c3aed;
+      background: var(--accent);
       color: #fff;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
+      transition: background .18s ease, transform .18s ease;
     }
+    button:hover{ background: var(--accent2); }
+    button:active{ transform: translateY(1px); }
     button:disabled { opacity: .65; cursor: not-allowed; }
-    .err { margin-top: 10px; font-size: 13px; color: #fecaca; }
+    .err { margin-top: 10px; font-size: 13px; color: var(--danger); line-height:1.35; }
+
+    .miniBox{
+      margin-top:12px;
+      padding:12px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.18);
+      font-size:12px;
+      color:rgba(233,236,255,0.78);
+      line-height:1.45;
+    }
+
     @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -52,18 +100,22 @@
   <div class="wrap">
     <div class="grid">
       <div class="card">
-        <span class="chip">Generatore automatico</span>
-        <h1>Scegli il contesto, noi generiamo la scusa dopo il pagamento.</h1>
-        <p>
-          Inserisci il contesto e (facoltativo) alcuni dettagli: la scusa verrà generata da AI e integrerà
-          queste informazioni in modo naturale, senza mostrarle come “campi” separati.
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;">
+          <span id="chip" class="chip">Checkout</span>
+          <span id="pricePill" class="pricePill">Prezzo: —</span>
+        </div>
+
+        <h1 id="title">Personalizza la tua scusa</h1>
+        <p id="subtitle">
+          Inserisci contesto e dettagli: la scusa verrà generata da AI e consegnata via email dopo il pagamento.
         </p>
 
         <label for="sku">Pacchetto</label>
         <select id="sku">
-          <option value="base">Base</option>
-          <option value="premium" selected>Premium</option>
-          <option value="business">Business</option>
+          <option value="SCUSA_BASE">Base</option>
+          <option value="SCUSA_PREMIUM">Premium</option>
+          <option value="SCUSA_BUSINESS">Business</option>
+          <option value="SCUSA_DIVERTENTE">Divertente</option>
         </select>
 
         <label for="context">Contesto</label>
@@ -73,24 +125,32 @@
           <option value="Cena dalla nonna">Cena dalla nonna</option>
           <option value="Appuntamento">Appuntamento</option>
           <option value="Lavoro">Lavoro</option>
+          <option value="Traffico">Traffico</option>
           <option value="Altro">Altro</option>
         </select>
 
         <label for="message">Dettaglio della situazione (facoltativo)</label>
-        <textarea id="message" placeholder="Esempio: arrivo in ritardo, non posso venire, devo rimandare..."></textarea>
+        <textarea id="message" placeholder=""></textarea>
 
         <label for="details">Dettagli aggiuntivi (facoltativo)</label>
-        <textarea id="details" placeholder="Esempio: è Natale, ho la febbre, sono in moto, devo passare da mia madre..."></textarea>
+        <textarea id="details" placeholder=""></textarea>
         <div class="note">Questi dettagli verranno integrati dentro la scusa in modo naturale.</div>
 
+        <div class="miniBox" id="packageHint">
+          Suggerimento: inserisci 1–2 dettagli concreti per una scusa più credibile.
+        </div>
+
         <div class="note" style="margin-top:12px;">
-          La scusa precisa verrà creata dal motore AI COLPA MIA e consegnata via email dopo il pagamento.
+          La scusa viene generata dopo il pagamento e inviata via email. Non viene mostrata in chiaro prima.
         </div>
       </div>
 
       <div class="rightBox">
-        <div class="hero">
-          <div class="emoji">😂</div>
+        <div id="hero" class="hero">
+          <div class="heroTitle">
+            <strong id="heroStrong">—</strong>
+            <span id="heroSpan">—</span>
+          </div>
         </div>
 
         <div class="card">
@@ -111,6 +171,20 @@
   const payBtn = document.getElementById("payBtn");
   const errBox = document.getElementById("err");
 
+  const skuEl = document.getElementById("sku");
+  const msgEl = document.getElementById("message");
+  const detEl = document.getElementById("details");
+
+  const chipEl = document.getElementById("chip");
+  const pricePillEl = document.getElementById("pricePill");
+  const titleEl = document.getElementById("title");
+  const subtitleEl = document.getElementById("subtitle");
+  const hintEl = document.getElementById("packageHint");
+
+  const heroEl = document.getElementById("hero");
+  const heroStrongEl = document.getElementById("heroStrong");
+  const heroSpanEl = document.getElementById("heroSpan");
+
   function showErr(msg) {
     errBox.style.display = "block";
     errBox.textContent = msg;
@@ -120,24 +194,115 @@
     errBox.textContent = "";
   }
 
+  function getSkuFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const raw = (p.get("sku") || "").trim();
+
+    const map = {
+      base: "SCUSA_BASE",
+      premium: "SCUSA_PREMIUM",
+      business: "SCUSA_BUSINESS",
+      divertente: "SCUSA_DIVERTENTE",
+    };
+    if (map[raw.toLowerCase()]) return map[raw.toLowerCase()];
+    if (["SCUSA_BASE","SCUSA_PREMIUM","SCUSA_BUSINESS","SCUSA_DIVERTENTE"].includes(raw)) return raw;
+    return "SCUSA_PREMIUM";
+  }
+
+  function applyVisualBySku(sku) {
+    const cfg = {
+      SCUSA_BASE: {
+        chip: "Base · credibile",
+        price: "€1",
+        title: "Scusa Base: credibile e naturale",
+        subtitle: "Testo realistico e diretto, perfetto per situazioni quotidiane.",
+        heroTitle: "Base",
+        heroSub: "Quotidiana, semplice, credibile.",
+        heroImg: "https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80",
+        msgPh: "Esempio: non posso venire / arrivo tardi / devo rimandare…",
+        detPh: "Esempio: sono in moto, ho febbre, devo passare da mia madre…",
+        hint: "Consiglio Base: 1 dettaglio concreto basta (il troppo può sembrare inventato).",
+        btn: "Paga €1 e ricevi la scusa"
+      },
+      SCUSA_PREMIUM: {
+        chip: "Premium · curata",
+        price: "€3",
+        title: "Scusa Premium: più profonda e ben scritta",
+        subtitle: "Empatica e ricca: motivazione plausibile + rimedio concreto + proposta alternativa.",
+        heroTitle: "Premium",
+        heroSub: "Più densa, più empatica, più “scritta bene”.",
+        heroImg: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1600&q=80",
+        msgPh: "Esempio: devo annullare / ho un imprevisto / mi sono organizzato male…",
+        detPh: "Esempio: è un giorno importante, sto rientrando tardi, ho una visita…",
+        hint: "Consiglio Premium: inserisci 2 dettagli reali per una scusa più “umana”.",
+        btn: "Paga €3 e ricevi la scusa"
+      },
+      SCUSA_BUSINESS: {
+        chip: "Business · professionale",
+        price: "€5",
+        title: "Scusa Business: formale, credibile, concreta",
+        subtitle: "Per lavoro/clienti: responsabilità, causa plausibile, prossimi passi e soluzione.",
+        heroTitle: "Business",
+        heroSub: "Professionale, sobria, orientata alla soluzione.",
+        heroImg: "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80",
+        msgPh: "Esempio: ritardo consegna / mancata presenza / aggiornamento progetto…",
+        detPh: "Esempio: dipendenza bloccata, indisponibilità tecnica, imprevisto cliente…",
+        hint: "Consiglio Business: inserisci 1 vincolo operativo reale. L’AI genererà anche i next step.",
+        btn: "Paga €5 e ricevi la scusa"
+      },
+      SCUSA_DIVERTENTE: {
+        chip: "Divertente · fa ridere",
+        price: "€2",
+        title: "Scusa Divertente: ironica ma plausibile",
+        subtitle: "Obiettivo: far sorridere davvero. L’AI usa vincoli comici dedicati.",
+        heroTitle: "Divertente",
+        heroSub: "Ironia + credibilità (no cringe).",
+        heroImg: "https://images.unsplash.com/photo-1520975958225-8d3b9a0b3d1b?auto=format&fit=crop&w=1600&q=80",
+        msgPh: "Esempio: devo disdire / arrivo tardi / non ce la faccio…",
+        detPh: "Esempio: ho perso il bus, il gatto ha combinato un disastro, sono in moto…",
+        hint: "Consiglio Divertente: 1 dettaglio “assurdo ma plausibile” rende la scusa davvero comica.",
+        btn: "Paga €2 e ricevi la scusa"
+      }
+    };
+
+    const c = cfg[sku] || cfg.SCUSA_PREMIUM;
+
+    chipEl.textContent = c.chip;
+    pricePillEl.textContent = "Prezzo: " + c.price;
+
+    titleEl.textContent = c.title;
+    subtitleEl.textContent = c.subtitle;
+
+    heroStrongEl.textContent = c.heroTitle;
+    heroSpanEl.textContent = c.heroSub;
+    heroEl.style.backgroundImage = `url("${c.heroImg}")`;
+
+    msgEl.placeholder = c.msgPh;
+    detEl.placeholder = c.detPh;
+
+    hintEl.textContent = c.hint;
+    payBtn.textContent = c.btn;
+  }
+
+  skuEl.value = getSkuFromUrl();
+  applyVisualBySku(skuEl.value);
+
+  skuEl.addEventListener("change", () => applyVisualBySku(skuEl.value));
+
   payBtn.addEventListener("click", async () => {
     clearErr();
     payBtn.disabled = true;
 
     try {
-      const sku = document.getElementById("sku").value;
+      const sku = skuEl.value;
       const context = document.getElementById("context").value;
       const message = document.getElementById("message").value.trim();
       const details = document.getElementById("details").value.trim();
       const email = document.getElementById("email").value.trim();
       const promo = document.getElementById("promo").value.trim();
 
-      if (!email || !email.includes("@")) {
-        throw new Error("Inserisci una email valida.");
-      }
-      if (!context) {
-        throw new Error("Seleziona un contesto.");
-      }
+      if (!email || !email.includes("@")) throw new Error("Inserisci una email valida.");
+      if (!context) throw new Error("Seleziona un contesto.");
 
       const body = { sku, context, message, details, email, promo };
 
@@ -148,13 +313,8 @@
       });
 
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || "Errore nella creazione del checkout.");
-      }
-
-      if (!data.url) {
-        throw new Error("Checkout non disponibile: url mancante.");
-      }
+      if (!res.ok) throw new Error(data.error || "Errore nella creazione del checkout.");
+      if (!data.url) throw new Error("Checkout non disponibile: url mancante.");
 
       window.location.href = data.url;
     } catch (e) {
