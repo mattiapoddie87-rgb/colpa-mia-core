@@ -1,149 +1,339 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
-  <title>COLPA MIA – Catalogo scuse</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>COLPA MIA — Catalogo</title>
+
   <style>
-    body { margin:0; background:#050712; color:#e9eef5; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    header { background:#111827; padding:12px 20px; display:flex; align-items:center; justify-content:space-between; }
-    header .logo { font-size:20px; font-weight:700; }
-    header .tagline { font-size:13px; color:#9ca3af; }
-    .hero { padding:24px 16px; background:linear-gradient(135deg,#111827,#312e81); color:#e5e7eb; }
-    .hero h1 { margin:0 0 8px; font-size:26px; }
-    .hero p { margin:0; font-size:14px; max-width:600px; }
-    .container { max-width:1100px; margin:0 auto; padding:16px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
-    .card { background:#0b1020; border:1px solid #1f2937; border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
-    .card-media { height:170px; display:flex; align-items:flex-end; padding:10px 12px; }
-    .card-media span { font-size:32px; }
-    .card-media-base { background:radial-gradient(circle at 20% 20%,#fbbf24,#b45309 45%,#111827 70%); }
-    .card-media-premium { background:radial-gradient(circle at 20% 20%,#a855f7,#1d4ed8 45%,#020617 70%); }
-    .card-media-business { background:linear-gradient(135deg,#111827,#4b5563); }
-    .card-media-fun { background:radial-gradient(circle at 20% 20%,#22c55e,#f97316 45%,#020617 70%); }
-    .card-body { padding:12px 14px 16px; flex:1; display:flex; flex-direction:column; }
-    .card-title { font-size:16px; font-weight:600; margin-bottom:4px; }
-    .card-desc { font-size:13px; color:#9ca3af; margin-bottom:8px; }
-    .card-price { font-size:15px; font-weight:700; margin-bottom:4px; }
-    .card-meta { font-size:12px; color:#9ca3af; margin-bottom:10px; }
-    .card button { margin-top:auto; background:#7c6dff; border:0; border-radius:8px; color:#fff; font-weight:600; padding:8px 12px; cursor:pointer; width:100%; }
-    .section-title { font-size:18px; font-weight:600; margin:16px 0 8px; }
-    a { color:#93c5fd; text-decoration:none; }
-    footer { font-size:11px; color:#6b7280; text-align:center; padding:16px; border-top:1px solid #111827; margin-top:24px; }
+    :root{
+      --bg:#0b1020;
+      --card:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.12);
+      --text:#e9ecff;
+      --muted:rgba(233,236,255,.78);
+      --accent:#7c3aed;
+      --accent2:#6d28d9;
+      --shadow:0 20px 40px rgba(0,0,0,.35);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:34px 18px 48px;
+    }
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      width:max-content;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(124,58,237,.18);
+      border:1px solid rgba(124,58,237,.35);
+      font-size:12px;
+      color:rgba(233,236,255,.92);
+    }
+    h1{
+      margin:0;
+      font-size:34px;
+      letter-spacing:-0.02em;
+      line-height:1.15;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      max-width:760px;
+      line-height:1.45;
+    }
+
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+      gap:22px;
+      margin-top:26px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+      min-height:420px;
+    }
+    .card:hover{
+      transform:translateY(-6px);
+      box-shadow:var(--shadow);
+      border-color:rgba(255,255,255,.18);
+    }
+
+    .media{
+      height:175px;
+      background-size:cover;
+      background-position:center;
+      position:relative;
+    }
+    .media::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(to bottom, rgba(0,0,0,.10), rgba(0,0,0,.72));
+    }
+    .tag{
+      position:absolute;
+      left:14px;
+      top:14px;
+      z-index:2;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 11px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      background:rgba(0,0,0,.35);
+      border:1px solid rgba(255,255,255,.20);
+      backdrop-filter: blur(6px);
+    }
+
+    /* ===== IMMAGINI PACCHETTI (PIÙ COERENTI) =====
+       Base: messaggio sul telefono / scusa quotidiana
+       Premium: tono “curato” (scrittura, notebook, attenzione)
+       Business: meeting / documento / contesto formale
+       Divertente: emoji/sorriso/leggerezza (senza clownate)
+    */
+    .media-base{
+      background-image:url("https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80");
+    }
+    .media-premium{
+      background-image:url("https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1600&q=80");
+    }
+    .media-business{
+      background-image:url("https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80");
+    }
+    .media-fun{
+      background-image:url("https://images.unsplash.com/photo-1520975958225-8d3b9a0b3d1b?auto=format&fit=crop&w=1600&q=80");
+    }
+
+    .content{
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      flex:1;
+    }
+    .title{
+      margin:0;
+      font-size:20px;
+      letter-spacing:-0.01em;
+    }
+    .desc{
+      margin:0;
+      color:var(--muted);
+      line-height:1.45;
+      font-size:14px;
+    }
+    .bullets{
+      margin:8px 0 0;
+      padding:0 0 0 18px;
+      color:rgba(233,236,255,.82);
+      font-size:13px;
+      line-height:1.5;
+    }
+    .bullets li{ margin:6px 0; }
+
+    .priceRow{
+      margin-top:auto;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .price{
+      font-size:22px;
+      font-weight:800;
+      letter-spacing:-0.02em;
+    }
+    .small{
+      font-size:12px;
+      color:rgba(233,236,255,.70);
+    }
+
+    .btn{
+      margin-top:14px;
+      width:100%;
+      padding:12px 14px;
+      border-radius:12px;
+      border:0;
+      background:var(--accent);
+      color:#fff;
+      font-weight:800;
+      cursor:pointer;
+      transition:background .18s ease, transform .18s ease;
+    }
+    .btn:hover{ background:var(--accent2); }
+    .btn:active{ transform:translateY(1px); }
+
+    .footer{
+      margin-top:26px;
+      color:rgba(233,236,255,.62);
+      font-size:12px;
+      line-height:1.45;
+    }
+
+    @media (max-width:540px){
+      h1{font-size:28px}
+      .media{height:165px}
+      .card{min-height:410px}
+    }
   </style>
 </head>
+
 <body>
-  <header>
-    <div>
-      <div class="logo">COLPA MIA</div>
-      <div class="tagline">L’agenzia di scuse su commissione</div>
-    </div>
-    <div style="font-size:12px;color:#9ca3af;">
-      ogni scusa, tempo guadagnato ⏱
-    </div>
-  </header>
-
-  <section class="hero">
-    <div class="container">
-      <h1>Se devi dire «scusa», ci pensiamo noi.</h1>
-      <p>
-        Scegli il pacchetto, raccontaci il contesto, paga in pochi secondi.
-        Ricevi via mail una scusa costruita su misura, pronta da copiare e incollare.
-      </p>
-    </div>
-  </section>
-
-  <main class="container">
-    <h2 class="section-title">Scuse principali</h2>
-    <div class="grid">
-      <!-- SCUSA BASE -->
-      <div class="card">
-        <div class="card-media card-media-base">
-          <span>🍽️</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA BASE</div>
-          <div class="card-desc">
-            La scusa essenziale per cene, appuntamenti, calcetto e piccoli impegni.
-            Perfetta quando devi solo tirarti elegantemente indietro.
-          </div>
-          <div class="card-price">da 1 €</div>
-          <div class="card-meta">Consegna via email in pochi minuti.</div>
-          <button onclick="goCheckout('SCUSA_BASE')">Acquista</button>
-        </div>
-      </div>
-
-      <!-- SCUSA PREMIUM -->
-      <div class="card">
-        <div class="card-media card-media-premium">
-          <span>⭐</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA PREMIUM</div>
-          <div class="card-desc">
-            Scuse più articolate, tono calibrato (formale/informale),
-            perfette per lavoro, eventi importanti e relazioni delicate.
-          </div>
-          <div class="card-price">da 7,90 €</div>
-          <div class="card-meta">Struttura personalizzata e più varianti.</div>
-          <button onclick="goCheckout('SCUSA_PREMIUM')">Acquista</button>
-        </div>
-      </div>
-
-      <!-- SCUSA BUSINESS -->
-      <div class="card">
-        <div class="card-media card-media-business">
-          <span>💼</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA BUSINESS</div>
-          <div class="card-desc">
-            Per aziende, freelance e professionisti: scuse eleganti e credibili,
-            adatte a clienti, fornitori e riunioni mancate.
-          </div>
-          <div class="card-price">da 19,90 €</div>
-          <div class="card-meta">Linguaggio business, gestione di casi complessi.</div>
-          <button onclick="goCheckout('SCUSA_BUSINESS')">Acquista</button>
-        </div>
-      </div>
-
-      <!-- SCUSA DIVERTENTE -->
-      <div class="card">
-        <div class="card-media card-media-fun">
-          <span>😂</span>
-        </div>
-        <div class="card-body">
-          <div class="card-title">SCUSA DIVERTENTE</div>
-          <div class="card-desc">
-            Scuse ironiche e leggere per amici, gruppi e chat.
-            Il motore le genera per te e le ricevi via mail.
-          </div>
-          <div class="card-price">1 € a scusa</div>
-          <div class="card-meta">Perfetta per il gruppo calcetto, la chat amici, i meme.</div>
-          <button onclick="goDivertente()">Vai alla sezione divertente</button>
-        </div>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <span class="chip">Catalogo COLPA MIA</span>
+        <h1>Scegli il pacchetto, poi personalizzi. La scusa arriva via email.</h1>
+        <p class="subtitle">
+          Ogni scusa è generata da AI in base al contesto e ai dettagli che inserisci. I pacchetti cambiano tono e obiettivo:
+          credibile, curato, professionale o divertente.
+        </p>
       </div>
     </div>
 
-    <h2 class="section-title">Sezione divertente</h2>
-    <p style="font-size:13px;color:#9ca3af;">
-      Vuoi solo una scusa ironica da mandare in chat?<br>
-      <a href="/divertente.html">Prova il generatore di scuse divertenti</a>: ogni scusa costa 1 €.
-    </p>
-  </main>
+    <div class="cards">
+      <!-- BASE -->
+      <div class="card">
+        <div class="media media-base">
+          <div class="tag">Base · credibile</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Base</h2>
+          <p class="desc">Perfetta per situazioni quotidiane: semplice, naturale, senza fronzoli.</p>
+          <ul class="bullets">
+            <li>Tono realistico e diretto</li>
+            <li>Integra contesto + dettagli in modo naturale</li>
+            <li>Pronta da copiare e incollare</li>
+          </ul>
 
-  <footer>
-    COLPA MIA © <span id="year"></span> – Agenzia di scuse su commissione.
-  </footer>
+          <div class="priceRow">
+            <div>
+              <div class="price">€1</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+
+          <button class="btn" onclick="goCheckout('SCUSA_BASE')">Scegli Base</button>
+        </div>
+      </div>
+
+      <!-- PREMIUM -->
+      <div class="card">
+        <div class="media media-premium">
+          <div class="tag">Premium · curata</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Premium</h2>
+          <p class="desc">Più empatica e “scritta bene”: ideale quando vuoi mantenere rapporto e immagine.</p>
+          <ul class="bullets">
+            <li>Tono elegante ed empatico</li>
+            <li>Motivazione credibile + rimedio concreto</li>
+            <li>Testo più denso e rifinito</li>
+          </ul>
+
+          <div class="priceRow">
+            <div>
+              <div class="price">€3</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+
+          <button class="btn" onclick="goCheckout('SCUSA_PREMIUM')">Scegli Premium</button>
+        </div>
+      </div>
+
+      <!-- BUSINESS -->
+      <div class="card">
+        <div class="media media-business">
+          <div class="tag">Business · professionale</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Business</h2>
+          <p class="desc">Per lavoro e contesti formali: chiara, solida, con responsabilità e soluzione.</p>
+          <ul class="bullets">
+            <li>Stile professionale e credibile</li>
+            <li>Responsabilità + next step concreti</li>
+            <li>Perfetta per clienti/colleghi</li>
+          </ul>
+
+          <div class="priceRow">
+            <div>
+              <div class="price">€5</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+
+          <button class="btn" onclick="goCheckout('SCUSA_BUSINESS')">Scegli Business</button>
+        </div>
+      </div>
+
+      <!-- DIVERTENTE -->
+      <div class="card">
+        <div class="media media-fun">
+          <div class="tag">Divertente · fa ridere</div>
+        </div>
+        <div class="content">
+          <h2 class="title">Scusa Divertente</h2>
+          <p class="desc">Ironica, brillante, mai volgare: perfetta per amici e situazioni leggere.</p>
+          <ul class="bullets">
+            <li>Meccanismo comico dedicato (AI)</li>
+            <li>Resta plausibile e include una proposta</li>
+            <li>Zero tono premium/business</li>
+          </ul>
+
+          <div class="priceRow">
+            <div>
+              <div class="price">€2</div>
+              <div class="small">Invio via email dopo il pagamento</div>
+            </div>
+          </div>
+
+          <button class="btn" onclick="goCheckout('SCUSA_DIVERTENTE')">Scegli Divertente</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Nota: dopo la scelta del pacchetto verrai portato alla pagina di checkout per inserire contesto, dettagli ed email.
+    </div>
+  </div>
 
   <script>
-    function goCheckout(sku) {
-      window.location.href = '/checkout.html?sku=' + encodeURIComponent(sku);
+    function goCheckout(sku){
+      window.location.href = "/checkout.html?sku=" + encodeURIComponent(sku);
     }
-    function goDivertente() {
-      window.location.href = '/divertente.html';
-    }
-    document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 </body>
 </html>
