@@ -43,11 +43,13 @@
       overflow:hidden;
       background-size: cover;
       background-position: center;
+      background-color: rgba(255,255,255,.06);
     }
+    /* overlay alleggerito */
     .hero::after{
       content:"";
       position:absolute; inset:0;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.10), rgba(0,0,0,0.72));
+      background: linear-gradient(to bottom, rgba(0,0,0,0.06), rgba(0,0,0,0.62));
     }
     .heroTitle{
       position:absolute; left:14px; bottom:14px; right:14px;
@@ -198,12 +200,7 @@
     const p = new URLSearchParams(window.location.search);
     const raw = (p.get("sku") || "").trim();
 
-    const map = {
-      base: "SCUSA_BASE",
-      premium: "SCUSA_PREMIUM",
-      business: "SCUSA_BUSINESS",
-      divertente: "SCUSA_DIVERTENTE",
-    };
+    const map = { base:"SCUSA_BASE", premium:"SCUSA_PREMIUM", business:"SCUSA_BUSINESS", divertente:"SCUSA_DIVERTENTE" };
     if (map[raw.toLowerCase()]) return map[raw.toLowerCase()];
     if (["SCUSA_BASE","SCUSA_PREMIUM","SCUSA_BUSINESS","SCUSA_DIVERTENTE"].includes(raw)) return raw;
     return "SCUSA_PREMIUM";
@@ -257,7 +254,7 @@
         subtitle: "Obiettivo: far sorridere davvero. L’AI usa vincoli comici dedicati.",
         heroTitle: "Divertente",
         heroSub: "Ironia + credibilità (no cringe).",
-        heroImg: "https://images.unsplash.com/photo-1520975958225-8d3b9a0b3d1b?auto=format&fit=crop&w=1600&q=80",
+        heroImg: "https://images.unsplash.com/photo-1520975693411-b4e6f2cbd0bb?auto=format&fit=crop&w=1600&q=80",
         msgPh: "Esempio: devo disdire / arrivo tardi / non ce la faccio…",
         detPh: "Esempio: ho perso il bus, il gatto ha combinato un disastro, sono in moto…",
         hint: "Consiglio Divertente: 1 dettaglio “assurdo ma plausibile” rende la scusa davvero comica.",
@@ -296,8 +293,8 @@
     try {
       const sku = skuEl.value;
       const context = document.getElementById("context").value;
-      const message = document.getElementById("message").value.trim();
-      const details = document.getElementById("details").value.trim();
+      const message = msgEl.value.trim();
+      const details = detEl.value.trim();
       const email = document.getElementById("email").value.trim();
       const promo = document.getElementById("promo").value.trim();
 
