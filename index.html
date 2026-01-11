@@ -93,12 +93,14 @@
       background-size:cover;
       background-position:center;
       position:relative;
+      background-color: rgba(255,255,255,.06); /* fallback */
     }
+    /* overlay alleggerito (prima era più scuro) */
     .media::after{
       content:"";
       position:absolute;
       inset:0;
-      background:linear-gradient(to bottom, rgba(0,0,0,.10), rgba(0,0,0,.72));
+      background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,.60));
     }
     .tag{
       position:absolute;
@@ -117,12 +119,7 @@
       backdrop-filter: blur(6px);
     }
 
-    /* ===== IMMAGINI PACCHETTI (PIÙ COERENTI) =====
-       Base: messaggio sul telefono / scusa quotidiana
-       Premium: tono “curato” (scrittura, notebook, attenzione)
-       Business: meeting / documento / contesto formale
-       Divertente: emoji/sorriso/leggerezza (senza clownate)
-    */
+    /* ===== IMMAGINI PACCHETTI ===== */
     .media-base{
       background-image:url("https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80");
     }
@@ -132,8 +129,9 @@
     .media-business{
       background-image:url("https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80");
     }
+    /* FIX: immagine divertente più chiara + più “sicura” */
     .media-fun{
-      background-image:url("https://images.unsplash.com/photo-1520975958225-8d3b9a0b3d1b?auto=format&fit=crop&w=1600&q=80");
+      background-image:url("https://images.unsplash.com/photo-1520975693411-b4e6f2cbd0bb?auto=format&fit=crop&w=1600&q=80");
     }
 
     .content{
@@ -224,11 +222,8 @@
     </div>
 
     <div class="cards">
-      <!-- BASE -->
       <div class="card">
-        <div class="media media-base">
-          <div class="tag">Base · credibile</div>
-        </div>
+        <div class="media media-base"><div class="tag">Base · credibile</div></div>
         <div class="content">
           <h2 class="title">Scusa Base</h2>
           <p class="desc">Perfetta per situazioni quotidiane: semplice, naturale, senza fronzoli.</p>
@@ -237,23 +232,18 @@
             <li>Integra contesto + dettagli in modo naturale</li>
             <li>Pronta da copiare e incollare</li>
           </ul>
-
           <div class="priceRow">
             <div>
               <div class="price">€1</div>
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-
           <button class="btn" onclick="goCheckout('SCUSA_BASE')">Scegli Base</button>
         </div>
       </div>
 
-      <!-- PREMIUM -->
       <div class="card">
-        <div class="media media-premium">
-          <div class="tag">Premium · curata</div>
-        </div>
+        <div class="media media-premium"><div class="tag">Premium · curata</div></div>
         <div class="content">
           <h2 class="title">Scusa Premium</h2>
           <p class="desc">Più empatica e “scritta bene”: ideale quando vuoi mantenere rapporto e immagine.</p>
@@ -262,23 +252,18 @@
             <li>Motivazione credibile + rimedio concreto</li>
             <li>Testo più denso e rifinito</li>
           </ul>
-
           <div class="priceRow">
             <div>
               <div class="price">€3</div>
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-
           <button class="btn" onclick="goCheckout('SCUSA_PREMIUM')">Scegli Premium</button>
         </div>
       </div>
 
-      <!-- BUSINESS -->
       <div class="card">
-        <div class="media media-business">
-          <div class="tag">Business · professionale</div>
-        </div>
+        <div class="media media-business"><div class="tag">Business · professionale</div></div>
         <div class="content">
           <h2 class="title">Scusa Business</h2>
           <p class="desc">Per lavoro e contesti formali: chiara, solida, con responsabilità e soluzione.</p>
@@ -287,23 +272,18 @@
             <li>Responsabilità + next step concreti</li>
             <li>Perfetta per clienti/colleghi</li>
           </ul>
-
           <div class="priceRow">
             <div>
               <div class="price">€5</div>
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-
           <button class="btn" onclick="goCheckout('SCUSA_BUSINESS')">Scegli Business</button>
         </div>
       </div>
 
-      <!-- DIVERTENTE -->
       <div class="card">
-        <div class="media media-fun">
-          <div class="tag">Divertente · fa ridere</div>
-        </div>
+        <div class="media media-fun"><div class="tag">Divertente · fa ridere</div></div>
         <div class="content">
           <h2 class="title">Scusa Divertente</h2>
           <p class="desc">Ironica, brillante, mai volgare: perfetta per amici e situazioni leggere.</p>
@@ -312,14 +292,12 @@
             <li>Resta plausibile e include una proposta</li>
             <li>Zero tono premium/business</li>
           </ul>
-
           <div class="priceRow">
             <div>
               <div class="price">€2</div>
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-
           <button class="btn" onclick="goCheckout('SCUSA_DIVERTENTE')">Scegli Divertente</button>
         </div>
       </div>
