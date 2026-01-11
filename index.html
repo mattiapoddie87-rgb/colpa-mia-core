@@ -90,18 +90,42 @@
 
     .media{
       height:175px;
+      position:relative;
+      overflow:hidden;
+      background-color: rgba(255,255,255,.06);
+    }
+    .media::before{
+      content:"";
+      position:absolute;
+      inset:0;
       background-size:cover;
       background-position:center;
-      position:relative;
-      background-color: rgba(255,255,255,.06); /* fallback */
+      background-repeat:no-repeat;
+      transform: scale(1.02);
     }
-    /* overlay alleggerito (prima era più scuro) */
     .media::after{
       content:"";
       position:absolute;
       inset:0;
-      background:linear-gradient(to bottom, rgba(0,0,0,.06), rgba(0,0,0,.60));
+      background:linear-gradient(to bottom, rgba(0,0,0,.05), rgba(0,0,0,.55));
     }
+
+    /* ===== IMMAGINI PACCHETTI ===== */
+    .media-base::before{
+      background-image:url("https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80");
+    }
+    .media-premium::before{
+      background-image:url("https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1600&q=80");
+    }
+    .media-business::before{
+      background-image:url("https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80");
+    }
+
+    /* ===== DIVERTENTE: CHIHUAHUA SVG (sempre visibile, zero nero) ===== */
+    .media-fun::before{
+      background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%201600%20900%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27g1%27%20cx%3D%2730%25%27%20cy%3D%2725%25%27%20r%3D%2780%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%2322c55e%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%27g2%27%20cx%3D%2770%25%27%20cy%3D%2760%25%27%20r%3D%2780%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23f97316%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%27g3%27%20cx%3D%2750%25%27%20cy%3D%2790%25%27%20r%3D%2775%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%237c3aed%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3Cfilter%20id%3D%27shadow%27%20x%3D%27-20%25%27%20y%3D%27-20%25%27%20width%3D%27140%25%27%20height%3D%27140%25%27%3E%3CfeDropShadow%20dx%3D%270%27%20dy%3D%2718%27%20stdDeviation%3D%2720%27%20flood-color%3D%27%23000000%27%20flood-opacity%3D%270.35%27/%3E%3C/filter%3E%3C/defs%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27%230b1020%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g1)%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g2)%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g3)%27/%3E%3C!--%20speech%20bubble%20--%3E%3Cg%20filter%3D%27url(%23shadow)%27%3E%3Cpath%20d%3D%27M980%20170c0-66%2054-120%20120-120h310c66%200%20120%2054%20120%20120v130c0%2066-54%20120-120%20120h-185l-78%2078%2010-78h-57c-66%200-120-54-120-120z%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.92%27/%3E%3Ctext%20x%3D%271120%27%20y%3D%27270%27%20font-family%3D%27system-ui%2C%20Segoe%20UI%2C%20Roboto%2C%20Arial%27%20font-size%3D%2748%27%20font-weight%3D%27800%27%20fill%3D%27%23111827%27%3EOops...%20%F0%9F%98%82%3C/text%3E%3C/g%3E%3C!--%20chihuahua%20--%3E%3Cg%20filter%3D%27url(%23shadow)%27%3E%3C!--%20ears%20--%3E%3Cpath%20d%3D%27M520%20320c-80-40-150-120-160-220%20110%2020%20210%2090%20240%20170%2020%2050%2010%2090-80%2050z%27%20fill%3D%27%23d6b38f%27/%3E%3Cpath%20d%3D%27M1080%20320c80-40%20150-120%20160-220-110%2020-210%2090-240%20170-20%2050-10%2090%2080%2050z%27%20fill%3D%27%23d6b38f%27/%3E%3C!--%20head%20--%3E%3Cellipse%20cx%3D%27800%27%20cy%3D%27490%27%20rx%3D%27310%27%20ry%3D%27260%27%20fill%3D%27%23e7c7a6%27/%3E%3C!--%20muzzle%20--%3E%3Cellipse%20cx%3D%27800%27%20cy%3D%27580%27%20rx%3D%27210%27%20ry%3D%27160%27%20fill%3D%27%23f3e2cf%27/%3E%3C!--%20sunglasses%20--%3E%3Crect%20x%3D%27585%27%20y%3D%27445%27%20width%3D%27210%27%20height%3D%2790%27%20rx%3D%2738%27%20fill%3D%27%23111827%27%20opacity%3D%270.92%27/%3E%3Crect%20x%3D%27805%27%20y%3D%27445%27%20width%3D%27210%27%20height%3D%2790%27%20rx%3D%2738%27%20fill%3D%27%23111827%27%20opacity%3D%270.92%27/%3E%3Crect%20x%3D%27790%27%20y%3D%27478%27%20width%3D%2720%27%20height%3D%2716%27%20rx%3D%278%27%20fill%3D%27%23111827%27%20opacity%3D%270.92%27/%3E%3C!--%20smile%20--%3E%3Cpath%20d%3D%27M720%20605c30%2035%2060%2052%2080%2052s50-17%2080-52%27%20fill%3D%27none%27%20stroke%3D%27%239a6b3d%27%20stroke-width%3D%2712%27%20stroke-linecap%3D%27round%27/%3E%3C!--%20nose%20--%3E%3Cpath%20d%3D%27M780%20570c10-18%2030-18%2040%200%206%2012%202%2026-20%2028-22-2-26-16-20-28z%27%20fill%3D%27%23111827%27%20opacity%3D%270.9%27/%3E%3C!--%20tongue%20--%3E%3Cpath%20d%3D%27M790%20655c0%2050%2060%2050%2060%200v-22c-22%2012-40%2012-60%200z%27%20fill%3D%27%23f472b6%27/%3E%3C!--%20collar%20--%3E%3Cpath%20d%3D%27M610%20700c120%20110%20460%20110%20580%200%27%20fill%3D%27none%27%20stroke%3D%27%237c3aed%27%20stroke-width%3D%2720%27%20stroke-linecap%3D%27round%27/%3E%3Ccircle%20cx%3D%27800%27%20cy%3D%27730%27%20r%3D%2720%27%20fill%3D%27%23f59e0b%27/%3E%3C/g%3E%3C/svg%3E");
+    }
+
     .tag{
       position:absolute;
       left:14px;
@@ -117,21 +141,6 @@
       background:rgba(0,0,0,.35);
       border:1px solid rgba(255,255,255,.20);
       backdrop-filter: blur(6px);
-    }
-
-    /* ===== IMMAGINI PACCHETTI ===== */
-    .media-base{
-      background-image:url("https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80");
-    }
-    .media-premium{
-      background-image:url("https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1600&q=80");
-    }
-    .media-business{
-      background-image:url("https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80");
-    }
-    /* FIX: immagine divertente più chiara + più “sicura” */
-    .media-fun{
-      background-image:url("https://images.unsplash.com/photo-1520975693411-b4e6f2cbd0bb?auto=format&fit=crop&w=1600&q=80");
     }
 
     .content{
