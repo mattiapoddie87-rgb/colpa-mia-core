@@ -23,72 +23,7 @@
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
       background:var(--bg);
       color:var(--text);
-      overflow-x:hidden;
     }
-
-    /* ===== BACKGROUND LAYERS (grid + glow + particles) ===== */
-    .bgWrap{
-      position:fixed;
-      inset:0;
-      z-index:-1;
-      pointer-events:none;
-      background: radial-gradient(1200px 700px at 20% 20%, rgba(124,58,237,.14), transparent 60%),
-                  radial-gradient(1200px 700px at 80% 65%, rgba(249,115,22,.10), transparent 62%),
-                  radial-gradient(900px 600px at 55% 95%, rgba(34,197,94,.08), transparent 60%),
-                  var(--bg);
-    }
-    /* Grid: orizzontali + verticali */
-    .bgGrid{
-      position:absolute;
-      inset:0;
-      opacity:.55;
-      filter: blur(.0px);
-      background-image:
-        linear-gradient(to right, rgba(233,236,255,.07) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(233,236,255,.07) 1px, transparent 1px),
-        linear-gradient(to right, rgba(124,58,237,.12) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(124,58,237,.10) 1px, transparent 1px);
-      background-size:
-        48px 48px,
-        48px 48px,
-        240px 240px,
-        240px 240px;
-      background-position:
-        0 0,
-        0 0,
-        12px 18px,
-        12px 18px;
-      mask-image: radial-gradient(circle at 50% 40%, rgba(0,0,0,1) 0%, rgba(0,0,0,.7) 55%, rgba(0,0,0,.2) 78%, rgba(0,0,0,0) 100%);
-    }
-    /* Scanline leggero + vignette */
-    .bgScan{
-      position:absolute;
-      inset:0;
-      opacity:.22;
-      background:
-        repeating-linear-gradient(
-          to bottom,
-          rgba(0,0,0,0) 0px,
-          rgba(0,0,0,0) 3px,
-          rgba(0,0,0,.22) 4px
-        );
-      mix-blend-mode: multiply;
-    }
-    .bgVignette{
-      position:absolute;
-      inset:0;
-      background: radial-gradient(circle at 50% 45%, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 70%, rgba(0,0,0,.60) 100%);
-      opacity:.9;
-    }
-    /* Particles canvas */
-    #particles{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      opacity:.55;
-    }
-
     .wrap{
       max-width:1100px;
       margin:0 auto;
@@ -123,7 +58,6 @@
       font-size:34px;
       letter-spacing:-0.02em;
       line-height:1.15;
-      text-shadow: 0 0 22px rgba(124,58,237,.12);
     }
     .subtitle{
       margin:0;
@@ -147,7 +81,6 @@
       flex-direction:column;
       transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
       min-height:420px;
-      backdrop-filter: blur(10px);
     }
     .card:hover{
       transform:translateY(-6px);
@@ -177,6 +110,7 @@
       background:linear-gradient(to bottom, rgba(0,0,0,.05), rgba(0,0,0,.55));
     }
 
+    /* ===== IMMAGINI PACCHETTI ===== */
     .media-base::before{
       background-image:url("https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80");
     }
@@ -186,9 +120,10 @@
     .media-business::before{
       background-image:url("https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1600&q=80");
     }
-    /* Divertente: tieni la tua attuale immagine/asset */
+
+    /* ===== DIVERTENTE: CHIHUAHUA SVG (sempre visibile, zero nero) ===== */
     .media-fun::before{
-      background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%201600%20900%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27g1%27%20cx%3D%2730%25%27%20cy%3D%2725%25%27%20r%3D%2780%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%2322c55e%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%27g2%27%20cx%3D%2770%25%27%20cy%3D%2760%25%27%20r%3D%2780%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23f97316%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%27g3%27%20cx%3D%2750%25%27%20cy%3D%2790%25%27%20r%3D%2775%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%237c3aed%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3Cfilter%20id%3D%27shadow%27%20x%3D%27-20%25%27%20y%3D%27-20%25%27%20width%3D%27140%25%27%20height%3D%27140%25%27%3E%3CfeDropShadow%20dx%3D%270%27%20dy%3D%2718%27%20stdDeviation%3D%2720%27%20flood-color%3D%27%23000000%27%20flood-opacity%3D%270.35%27/%3E%3C/filter%3E%3C/defs%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27%230b1020%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g1)%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g2)%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g3)%27/%3E%3Cg%20filter%3D%27url(%23shadow)%27%3E%3Ccircle%20cx%3D%27790%27%20cy%3D%27490%27%20r%3D%27180%27%20fill%3D%27%23f2e8db%27/%3E%3Cpath%20d%3D%27M680%20420%20l-90-90%20c-30-30%20-20-70%2010-90%20c70%20-40%20180%2030%20190%20120%20z%27%20fill%3D%27%23d8c1a6%27/%3E%3Cpath%20d%3D%27M900%20420%20l90-90%20c30-30%2020-70%20-10-90%20c-70%20-40%20-180%2030%20-190%20120%20z%27%20fill%3D%27%23d8c1a6%27/%3E%3Crect%20x%3D%27655%27%20y%3D%27465%27%20width%3D%27270%27%20height%3D%27100%27%20rx%3D%2750%27%20fill%3D%27%23111827%27%20opacity%3D%270.9%27/%3E%3Cpath%20d%3D%27M725%20595%20c40%2040%20100%2040%20140%200%27%20fill%3D%27none%27%20stroke%3D%27%239a6b3d%27%20stroke-width%3D%2712%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M760%20610%20c0%2050%2060%2050%2060%200%20v-20%20c-22%2012-40%2012-60%200%20z%27%20fill%3D%27%23f472b6%27/%3E%3Cpath%20d%3D%27M960%20220c0-52%2042-94%2094-94h260c52%200%2094%2042%2094%2094v110c0%2052-42%2094-94%2094h-150l-64%2064%208-64h-54c-52%200-94-42-94-94z%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.92%27/%3E%3Ctext%20x%3D%271060%27%20y%3D%27295%27%20font-family%3D%27system-ui%2C%20Segoe%20UI%2C%20Roboto%2C%20Arial%27%20font-size%3D%2742%27%20font-weight%3D%27800%27%20fill%3D%27%23111827%27%3EOops...%20%F0%9F%98%82%3C/text%3E%3C/g%3E%3C/svg%3E");
+      background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%201600%20900%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27g1%27%20cx%3D%2730%25%27%20cy%3D%2725%25%27%20r%3D%2780%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%2322c55e%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%27g2%27%20cx%3D%2770%25%27%20cy%3D%2760%25%27%20r%3D%2780%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23f97316%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%27g3%27%20cx%3D%2750%25%27%20cy%3D%2790%25%27%20r%3D%2775%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%237c3aed%27%20stop-opacity%3D%270.55%27/%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230b1020%27%20stop-opacity%3D%270%27/%3E%3C/radialGradient%3E%3Cfilter%20id%3D%27shadow%27%20x%3D%27-20%25%27%20y%3D%27-20%25%27%20width%3D%27140%25%27%20height%3D%27140%25%27%3E%3CfeDropShadow%20dx%3D%270%27%20dy%3D%2718%27%20stdDeviation%3D%2720%27%20flood-color%3D%27%23000000%27%20flood-opacity%3D%270.35%27/%3E%3C/filter%3E%3C/defs%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27%230b1020%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g1)%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g2)%27/%3E%3Crect%20width%3D%271600%27%20height%3D%27900%27%20fill%3D%27url(%23g3)%27/%3E%3C!--%20speech%20bubble%20--%3E%3Cg%20filter%3D%27url(%23shadow)%27%3E%3Cpath%20d%3D%27M980%20170c0-66%2054-120%20120-120h310c66%200%20120%2054%20120%20120v130c0%2066-54%20120-120%20120h-185l-78%2078%2010-78h-57c-66%200-120-54-120-120z%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.92%27/%3E%3Ctext%20x%3D%271120%27%20y%3D%27270%27%20font-family%3D%27system-ui%2C%20Segoe%20UI%2C%20Roboto%2C%20Arial%27%20font-size%3D%2748%27%20font-weight%3D%27800%27%20fill%3D%27%23111827%27%3EOops...%20%F0%9F%98%82%3C/text%3E%3C/g%3E%3C!--%20chihuahua%20--%3E%3Cg%20filter%3D%27url(%23shadow)%27%3E%3C!--%20ears%20--%3E%3Cpath%20d%3D%27M520%20320c-80-40-150-120-160-220%20110%2020%20210%2090%20240%20170%2020%2050%2010%2090-80%2050z%27%20fill%3D%27%23d6b38f%27/%3E%3Cpath%20d%3D%27M1080%20320c80-40%20150-120%20160-220-110%2020-210%2090-240%20170-20%2050-10%2090%2080%2050z%27%20fill%3D%27%23d6b38f%27/%3E%3C!--%20head%20--%3E%3Cellipse%20cx%3D%27800%27%20cy%3D%27490%27%20rx%3D%27310%27%20ry%3D%27260%27%20fill%3D%27%23e7c7a6%27/%3E%3C!--%20muzzle%20--%3E%3Cellipse%20cx%3D%27800%27%20cy%3D%27580%27%20rx%3D%27210%27%20ry%3D%27160%27%20fill%3D%27%23f3e2cf%27/%3E%3C!--%20sunglasses%20--%3E%3Crect%20x%3D%27585%27%20y%3D%27445%27%20width%3D%27210%27%20height%3D%2790%27%20rx%3D%2738%27%20fill%3D%27%23111827%27%20opacity%3D%270.92%27/%3E%3Crect%20x%3D%27805%27%20y%3D%27445%27%20width%3D%27210%27%20height%3D%2790%27%20rx%3D%2738%27%20fill%3D%27%23111827%27%20opacity%3D%270.92%27/%3E%3Crect%20x%3D%27790%27%20y%3D%27478%27%20width%3D%2720%27%20height%3D%2716%27%20rx%3D%278%27%20fill%3D%27%23111827%27%20opacity%3D%270.92%27/%3E%3C!--%20smile%20--%3E%3Cpath%20d%3D%27M720%20605c30%2035%2060%2052%2080%2052s50-17%2080-52%27%20fill%3D%27none%27%20stroke%3D%27%239a6b3d%27%20stroke-width%3D%2712%27%20stroke-linecap%3D%27round%27/%3E%3C!--%20nose%20--%3E%3Cpath%20d%3D%27M780%20570c10-18%2030-18%2040%200%206%2012%202%2026-20%2028-22-2-26-16-20-28z%27%20fill%3D%27%23111827%27%20opacity%3D%270.9%27/%3E%3C!--%20tongue%20--%3E%3Cpath%20d%3D%27M790%20655c0%2050%2060%2050%2060%200v-22c-22%2012-40%2012-60%200z%27%20fill%3D%27%23f472b6%27/%3E%3C!--%20collar%20--%3E%3Cpath%20d%3D%27M610%20700c120%20110%20460%20110%20580%200%27%20fill%3D%27none%27%20stroke%3D%27%237c3aed%27%20stroke-width%3D%2720%27%20stroke-linecap%3D%27round%27/%3E%3Ccircle%20cx%3D%27800%27%20cy%3D%27730%27%20r%3D%2720%27%20fill%3D%27%23f59e0b%27/%3E%3C/g%3E%3C/svg%3E");
     }
 
     .tag{
@@ -252,7 +187,7 @@
       color:rgba(233,236,255,.70);
     }
 
-    button{
+    .btn{
       margin-top:14px;
       width:100%;
       padding:12px 14px;
@@ -264,8 +199,8 @@
       cursor:pointer;
       transition:background .18s ease, transform .18s ease;
     }
-    button:hover{ background:var(--accent2); }
-    button:active{ transform:translateY(1px); }
+    .btn:hover{ background:var(--accent2); }
+    .btn:active{ transform:translateY(1px); }
 
     .footer{
       margin-top:26px;
@@ -283,14 +218,6 @@
 </head>
 
 <body>
-  <!-- BACKGROUND -->
-  <div class="bgWrap" aria-hidden="true">
-    <canvas id="particles"></canvas>
-    <div class="bgGrid"></div>
-    <div class="bgScan"></div>
-    <div class="bgVignette"></div>
-  </div>
-
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
@@ -320,7 +247,7 @@
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-          <button onclick="goCheckout('SCUSA_BASE')">Scegli Base</button>
+          <button class="btn" onclick="goCheckout('SCUSA_BASE')">Scegli Base</button>
         </div>
       </div>
 
@@ -340,7 +267,7 @@
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-          <button onclick="goCheckout('SCUSA_PREMIUM')">Scegli Premium</button>
+          <button class="btn" onclick="goCheckout('SCUSA_PREMIUM')">Scegli Premium</button>
         </div>
       </div>
 
@@ -360,7 +287,7 @@
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-          <button onclick="goCheckout('SCUSA_BUSINESS')">Scegli Business</button>
+          <button class="btn" onclick="goCheckout('SCUSA_BUSINESS')">Scegli Business</button>
         </div>
       </div>
 
@@ -380,7 +307,7 @@
               <div class="small">Invio via email dopo il pagamento</div>
             </div>
           </div>
-          <button onclick="goCheckout('SCUSA_DIVERTENTE')">Scegli Divertente</button>
+          <button class="btn" onclick="goCheckout('SCUSA_DIVERTENTE')">Scegli Divertente</button>
         </div>
       </div>
     </div>
@@ -394,101 +321,6 @@
     function goCheckout(sku){
       window.location.href = "/checkout.html?sku=" + encodeURIComponent(sku);
     }
-
-    // ===== PARTICLES (slow, subtle, Blade Runner-ish) =====
-    (function(){
-      const canvas = document.getElementById("particles");
-      const ctx = canvas.getContext("2d", { alpha: true });
-
-      let w = 0, h = 0, dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      const PCOUNT = 70;
-      const particles = [];
-
-      function resize(){
-        w = Math.floor(window.innerWidth);
-        h = Math.floor(window.innerHeight);
-        canvas.style.width = w + "px";
-        canvas.style.height = h + "px";
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-
-      function rand(min, max){ return Math.random() * (max - min) + min; }
-
-      function init(){
-        particles.length = 0;
-        for(let i=0;i<PCOUNT;i++){
-          particles.push({
-            x: rand(0,w),
-            y: rand(0,h),
-            r: rand(0.8, 2.2),
-            vx: rand(-0.08, 0.08),
-            vy: rand(-0.05, 0.05),
-            a: rand(0.18, 0.55),
-            hue: rand(240, 290) // violet-ish
-          });
-        }
-      }
-
-      function step(){
-        ctx.clearRect(0,0,w,h);
-
-        // slight glow haze
-        const g = ctx.createRadialGradient(w*0.25, h*0.2, 0, w*0.25, h*0.2, Math.max(w,h)*0.7);
-        g.addColorStop(0, "rgba(124,58,237,0.10)");
-        g.addColorStop(1, "rgba(124,58,237,0)");
-        ctx.fillStyle = g;
-        ctx.fillRect(0,0,w,h);
-
-        for(const p of particles){
-          p.x += p.vx;
-          p.y += p.vy;
-
-          // wrap
-          if(p.x < -10) p.x = w + 10;
-          if(p.x > w + 10) p.x = -10;
-          if(p.y < -10) p.y = h + 10;
-          if(p.y > h + 10) p.y = -10;
-
-          // dot
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-          ctx.fillStyle = `hsla(${p.hue}, 85%, 70%, ${p.a})`;
-          ctx.fill();
-
-          // faint connection lines (very subtle)
-          // only check a few neighbors randomly to keep CPU low
-        }
-
-        // very subtle drifting “dust” feel: occasional lines
-        for(let k=0;k<14;k++){
-          const a = particles[(Math.random()*particles.length)|0];
-          const b = particles[(Math.random()*particles.length)|0];
-          const dx = a.x - b.x, dy = a.y - b.y;
-          const dist = Math.hypot(dx,dy);
-          if(dist < 180){
-            ctx.strokeStyle = `rgba(124,58,237,0.06)`;
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(a.x,a.y);
-            ctx.lineTo(b.x,b.y);
-            ctx.stroke();
-          }
-        }
-
-        requestAnimationFrame(step);
-      }
-
-      window.addEventListener("resize", () => {
-        resize();
-        init();
-      });
-
-      resize();
-      init();
-      step();
-    })();
   </script>
 </body>
 </html>
