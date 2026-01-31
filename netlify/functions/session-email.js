@@ -7,7 +7,7 @@ const nodemailer = require("nodemailer");
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "POST,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
 const json = (statusCode, body) => ({
@@ -68,7 +68,6 @@ function subjectBySku(sku) {
   return "La tua scusa – COLPA MIA";
 }
 
-// Estrae parole “utili” dai dettagli (per verificare che almeno una sia stata usata).
 function extractDetailTokens(details) {
   const text = String(details || "")
     .toLowerCase()
@@ -76,9 +75,31 @@ function extractDetailTokens(details) {
   const tokens = text
     .split(/\s+/)
     .map((t) => t.trim())
-    .filter((t) => t.length >= 4) // evita “oggi”, “bene”
-    .filter((t) => !["che", "alla", "dalla", "delle", "della", "dello", "sono", "però", "quindi", "anche", "solo", "come", "quando", "perché", "questa", "quello", "quella", "stato", "stata"].includes(t));
-  // de-dup + limita per performance
+    .filter((t) => t.length >= 4)
+    .filter(
+      (t) =>
+        ![
+          "che",
+          "alla",
+          "dalla",
+          "delle",
+          "della",
+          "dello",
+          "sono",
+          "però",
+          "quindi",
+          "anche",
+          "solo",
+          "come",
+          "quando",
+          "perché",
+          "questa",
+          "quello",
+          "quella",
+          "stato",
+          "stata",
+        ].includes(t)
+    );
   return Array.from(new Set(tokens)).slice(0, 12);
 }
 
@@ -87,7 +108,7 @@ function textIncludesAnyToken(text, tokens) {
   return tokens.some((t) => hay.includes(t));
 }
 
-// ---------------- FALLBACK BREVI (sempre integrano dettagli) ----------------
+// ---------------- FALLBACK BREVI ----------------
 function fallbackExcuse({ sku, context, message, details }) {
   const ctx = context ? `${context}` : "la situazione";
   const msg = message ? `${message}` : "ho un imprevisto";
@@ -96,18 +117,18 @@ function fallbackExcuse({ sku, context, message, details }) {
   if (sku === "SCUSA_BUSINESS") {
     const body = normalizeSpaces(
       `Gentile destinatario,
-      
-      desidero scusarmi per l’inconveniente relativo a ${ctx}. ${msg ? `In breve: ${msg}.` : ""} ${
-        det ? `C’è anche questo vincolo: ${det}.` : ""
+
+desidero scusarmi per l’inconveniente relativo a ${ctx}. ${msg ? `In breve: ${msg}.` : ""} ${
+        det ? `Vincolo rilevante: ${det}.` : ""
       }
-      
-      Sto intervenendo per minimizzare l’impatto e propongo:
-      - aggiornamento entro oggi con tempistiche riviste
-      - un piano di recupero con priorità e responsabilità chiare
-      
-      Resto a disposizione per concordare la soluzione più adatta.
-      
-      Cordiali saluti.`
+
+Sto intervenendo per minimizzare l’impatto e propongo:
+- aggiornamento entro oggi con tempistiche riviste
+- piano di recupero con priorità e responsabilità chiare
+
+Resto a disposizione per concordare la soluzione più adatta.
+
+Cordiali saluti.`
     );
     return { subject: subjectBySku(sku), text: body, isFallback: true };
   }
@@ -115,14 +136,14 @@ function fallbackExcuse({ sku, context, message, details }) {
   if (sku === "SCUSA_PREMIUM") {
     const body = normalizeSpaces(
       `Ciao,
-      
-      mi dispiace davvero: su ${ctx} voglio essere corretto e non lasciarti con un “buco”. ${msg ? `È successo questo: ${msg}.` : ""} ${
-        det ? `In più: ${det}.` : ""
-      }
-      
-      Preferisco recuperare bene: ti propongo domani alla stessa ora, oppure dimmi tu una fascia e mi adeguo.
-      
-      Grazie per la pazienza.`
+
+mi dispiace davvero: su ${ctx} voglio essere corretto e non lasciarti con un “buco”. ${
+        msg ? `È successo questo: ${msg}.` : ""
+      } ${det ? `In più: ${det}.` : ""}
+
+Preferisco recuperare bene: ti propongo domani alla stessa ora, oppure dimmi tu una fascia e mi adeguo.
+
+Grazie per la pazienza.`
     );
     return { subject: subjectBySku(sku), text: body, isFallback: true };
   }
@@ -132,22 +153,20 @@ function fallbackExcuse({ sku, context, message, details }) {
       `Ok, confessione: oggi non ce la faccio su ${ctx}. ${msg ? `Motivo ufficiale: ${msg}.` : ""} ${
         det ? `Plot twist: ${det}.` : ""
       }
-      Recupero con stile: domani stessa ora oppure scegli tu un’alternativa e mi faccio perdonare.`
+Recupero con stile: domani stessa ora oppure scegli tu un’alternativa e mi faccio perdonare.`
     );
     return { subject: subjectBySku(sku), text: body, isFallback: true };
   }
 
-  // BASE
   const body = normalizeSpaces(
     `Ciao! Purtroppo su ${ctx} non riesco: ${msg || "ho un imprevisto"}. ${det ? `(${det})` : ""}
-    Se ti va, recuperiamo domani oppure ti propongo io un orario appena posso.`
+Se ti va, recuperiamo domani oppure ti propongo io un orario appena posso.`
   );
   return { subject: subjectBySku(sku), text: body, isFallback: true };
 }
 
-// ---------------- PROMPT (LUNGHEZZE RIDOTTE + OBBLIGO DETTAGLI) ----------------
+// ---------------- PROMPT (BREVE + OBBLIGO DETTAGLI) ----------------
 function wordRangeBySku(sku) {
-  // range “giusto” e leggero
   if (sku === "SCUSA_BASE") return "45–80";
   if (sku === "SCUSA_PREMIUM") return "90–150";
   if (sku === "SCUSA_BUSINESS") return "90–150";
@@ -176,17 +195,17 @@ PARAMETRI (da integrare nel testo in modo naturale, senza etichette finali tipo 
 - Contesto: ${context || "(non specificato)"}
 - Situazione: ${message || "(non specificata)"}
 - Dettagli aggiuntivi: ${details || "(nessuno)"}
-  `);
+`);
 
   const commonRules = normalizeSpaces(`
 REGOLE:
 - Lunghezza: ${wr} parole.
 - Integra contesto/situazione/dettagli dentro la scusa (NON elencarli in fondo).
 - Niente sezioni tipo "Dettagli:" / "Contesto:" / "Note:".
-- Stile naturale e scorrevole. Una sola versione.
+- Una sola versione.
 - Inserisci SEMPRE una proposta concreta per recuperare (orario o alternativa).
 ${forceUseDetails && details ? "- OBBLIGATORIO: inserisci almeno UN dettaglio specifico dal campo 'Dettagli aggiuntivi' nel corpo del testo." : ""}
-  `);
+`);
 
   if (sku === "SCUSA_BUSINESS") {
     return normalizeSpaces(`
@@ -194,12 +213,11 @@ Scrivi UNA scusa BUSINESS in stile email formale.
 Vincoli:
 - tono professionale, nessun umorismo
 - struttura compatta: apertura + responsabilità + causa plausibile + 2-3 next step concreti + chiusura
-- niente frasi infinite
 
 ${userParams}
 
 ${commonRules}
-    `);
+`);
   }
 
   if (sku === "SCUSA_PREMIUM") {
@@ -208,12 +226,11 @@ Scrivi UNA scusa PREMIUM: più curata della base ma non lunga.
 Vincoli:
 - empatia reale + responsabilità + spiegazione plausibile
 - proposta concreta (due opzioni) per recuperare
-- no burocratese
 
 ${userParams}
 
 ${commonRules}
-    `);
+`);
   }
 
   if (sku === "SCUSA_DIVERTENTE") {
@@ -228,10 +245,9 @@ Vincoli:
 ${userParams}
 
 ${commonRules}
-    `);
+`);
   }
 
-  // BASE
   return normalizeSpaces(`
 Scrivi UNA scusa BASE breve e credibile.
 Vincoli:
@@ -241,12 +257,10 @@ Vincoli:
 ${userParams}
 
 ${commonRules}
-  `);
+`);
 }
 
-// ---------------- OPENAI CALL (parametri calibrati per brevità) ----------------
 function paramsBySku(sku) {
-  // temperature più bassa = meno prolisso / più aderente
   if (sku === "SCUSA_BUSINESS") {
     return { temperature: 0.55, top_p: 0.9, presence_penalty: 0.2, frequency_penalty: 0.25 };
   }
@@ -256,7 +270,6 @@ function paramsBySku(sku) {
   if (sku === "SCUSA_DIVERTENTE") {
     return { temperature: 1.0, top_p: 0.95, presence_penalty: 0.55, frequency_penalty: 0.35 };
   }
-  // BASE
   return { temperature: 0.75, top_p: 0.9, presence_penalty: 0.25, frequency_penalty: 0.25 };
 }
 
@@ -289,7 +302,6 @@ async function callOpenAI({ sku, context, message, details, forceUseDetails }) {
     });
 
     const data = await res.json().catch(() => ({}));
-
     if (!res.ok) {
       const msg = data?.error?.message || `HTTP ${res.status}`;
       return { ok: false, reason: `openai_error:${res.status}`, message: msg };
@@ -303,12 +315,37 @@ async function callOpenAI({ sku, context, message, details, forceUseDetails }) {
   }
 }
 
-// ---------------- MAIN HANDLER ----------------
+// ---------------- SESSION ID PARSING (GET + POST) ----------------
+function getSessionId(event) {
+  // supporta:
+  // - GET /.netlify/functions/session-email?session_id=...  (Stripe standard)
+  // - GET /.netlify/functions/session-email?sessionId=...
+  // - POST { sessionId: "..." }
+  const qs = event.queryStringParameters || {};
+  const sidFromQuery = qs.session_id || qs.sessionId;
+
+  if (sidFromQuery) return sidFromQuery;
+
+  if (event.httpMethod === "POST") {
+    try {
+      const body = JSON.parse(event.body || "{}");
+      return body.sessionId || body.session_id;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+// ---------------- HANDLER ----------------
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: CORS_HEADERS, body: "" };
   }
-  if (event.httpMethod !== "POST") {
+
+  // Accetta GET e POST (fix 405)
+  if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
     return json(405, { error: "Metodo non consentito" });
   }
 
@@ -319,14 +356,7 @@ exports.handler = async (event) => {
     return json(500, { error: "Configurazione pagamento non valida." });
   }
 
-  let data;
-  try {
-    data = JSON.parse(event.body || "{}");
-  } catch {
-    return json(400, { error: "Body JSON non valido" });
-  }
-
-  const sessionId = data.sessionId;
+  const sessionId = getSessionId(event);
   if (!sessionId) return json(400, { error: "sessionId mancante" });
 
   let session;
@@ -339,8 +369,8 @@ exports.handler = async (event) => {
 
   const metadata = session.metadata || {};
   const customerDetails = session.customer_details || {};
-
   const email = metadata.email || customerDetails.email;
+
   if (!email) return json(400, { error: "Email mancante." });
 
   const sku = metadata.sku || "SCUSA_BASE";
@@ -348,7 +378,7 @@ exports.handler = async (event) => {
   const message = metadata.message || "";
   const details = metadata.details || "";
 
-  // 1) Chiamata AI (prima passata)
+  // 1) AI
   const tokens = extractDetailTokens(details);
   const ai1 = await callOpenAI({ sku, context, message, details, forceUseDetails: false });
 
@@ -359,24 +389,20 @@ exports.handler = async (event) => {
   if (ai1.ok) {
     excuseText = ai1.text;
   } else {
-    // fallback immediato se OpenAI non disponibile
     const fb = fallbackExcuse({ sku, context, message, details });
     excuseText = fb.text;
     usedFallback = true;
     console.warn("[session-email] OpenAI failed -> fallback:", { reason: ai1.reason, msg: ai1.message });
   }
 
-  // 2) Verifica obbligatoria dettagli: se details presente, deve comparire almeno un token
-  // Se non compare -> 1 retry (solo se non siamo già in fallback)
+  // 2) obbligo dettagli (se presenti) con 1 retry
   if (!usedFallback && details && tokens.length > 0) {
-    const okDetails = textIncludesAnyToken(excuseText, tokens);
-    if (!okDetails) {
+    if (!textIncludesAnyToken(excuseText, tokens)) {
       const ai2 = await callOpenAI({ sku, context, message, details, forceUseDetails: true });
       if (ai2.ok) {
         excuseText = ai2.text;
         usedRetry = true;
       } else {
-        // se retry fallisce, usa fallback (che integra dettagli)
         const fb = fallbackExcuse({ sku, context, message, details });
         excuseText = fb.text;
         usedFallback = true;
@@ -385,7 +411,7 @@ exports.handler = async (event) => {
     }
   }
 
-  // 3) Invio email
+  // 3) invio mail
   let transporter;
   try {
     transporter = createTransport();
@@ -407,16 +433,14 @@ exports.handler = async (event) => {
     </div>
   `;
 
-  const mailOptions = {
-    from: process.env.FROM_EMAIL,
-    to: email,
-    subject,
-    text: excuseText,
-    html,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
+    await transporter.sendMail({
+      from: process.env.FROM_EMAIL,
+      to: email,
+      subject,
+      text: excuseText,
+      html,
+    });
     return json(200, { ok: true, usedFallback, usedRetry });
   } catch (err) {
     console.error("[session-email] sendMail error:", err);
