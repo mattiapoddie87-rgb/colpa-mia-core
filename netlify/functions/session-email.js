@@ -108,7 +108,7 @@ function textIncludesAnyToken(text, tokens) {
   return tokens.some((t) => hay.includes(t));
 }
 
-// ---------------- FALLBACK BREVI ----------------
+// ---------------- FALLBACK BREVI (NO TEMPI/ LUOGHI SPECIFICI) ----------------
 function fallbackExcuse({ sku, context, message, details }) {
   const ctx = context ? `${context}` : "la situazione";
   const msg = message ? `${message}` : "ho un imprevisto";
@@ -122,11 +122,11 @@ desidero scusarmi per l’inconveniente relativo a ${ctx}. ${msg ? `In breve: ${
         det ? `Vincolo rilevante: ${det}.` : ""
       }
 
-Sto intervenendo per minimizzare l’impatto e propongo:
-- aggiornamento entro oggi con tempistiche riviste
-- piano di recupero con priorità e responsabilità chiare
+Sto intervenendo per minimizzare l’impatto. Per chiudere rapidamente, ti propongo:
+- riallineamento con una tua disponibilità
+- definizione dei prossimi passi con priorità chiare
 
-Resto a disposizione per concordare la soluzione più adatta.
+Fammi sapere quale modalità e quale finestra ti è più comoda, mi adeguo.
 
 Cordiali saluti.`
     );
@@ -141,7 +141,7 @@ mi dispiace davvero: su ${ctx} voglio essere corretto e non lasciarti con un “
         msg ? `È successo questo: ${msg}.` : ""
       } ${det ? `In più: ${det}.` : ""}
 
-Preferisco recuperare bene: ti propongo domani alla stessa ora, oppure dimmi tu una fascia e mi adeguo.
+Per recuperare bene, preferisco seguire le tue preferenze: dimmi tu quando e come ti è più comodo e mi organizzo di conseguenza.
 
 Grazie per la pazienza.`
     );
@@ -150,22 +150,24 @@ Grazie per la pazienza.`
 
   if (sku === "SCUSA_DIVERTENTE") {
     const body = normalizeSpaces(
-      `Ok, confessione: oggi non ce la faccio su ${ctx}. ${msg ? `Motivo ufficiale: ${msg}.` : ""} ${
+      `Ok, confessione: oggi su ${ctx} non ce la faccio. ${msg ? `Motivo ufficiale: ${msg}.` : ""} ${
         det ? `Plot twist: ${det}.` : ""
       }
-Recupero con stile: domani stessa ora oppure scegli tu un’alternativa e mi faccio perdonare.`
+
+Per farmi perdonare, facciamo una cosa semplice: proponimi tu quando/come preferisci e io mi adeguo (senza fare altre figure).`
     );
     return { subject: subjectBySku(sku), text: body, isFallback: true };
   }
 
   const body = normalizeSpaces(
     `Ciao! Purtroppo su ${ctx} non riesco: ${msg || "ho un imprevisto"}. ${det ? `(${det})` : ""}
-Se ti va, recuperiamo domani oppure ti propongo io un orario appena posso.`
+
+Per recuperare, dimmi tu quando ti è più comodo e mi organizzo.`
   );
   return { subject: subjectBySku(sku), text: body, isFallback: true };
 }
 
-// ---------------- PROMPT (BREVE + OBBLIGO DETTAGLI) ----------------
+// ---------------- PROMPT (BREVE + OBBLIGO DETTAGLI + NO TEMPO/LUOGO) ----------------
 function wordRangeBySku(sku) {
   if (sku === "SCUSA_BASE") return "45–80";
   if (sku === "SCUSA_PREMIUM") return "90–150";
@@ -197,13 +199,18 @@ PARAMETRI (da integrare nel testo in modo naturale, senza etichette finali tipo 
 - Dettagli aggiuntivi: ${details || "(nessuno)"}
 `);
 
+  // Regola chiave: MAI proporre orari/date/luoghi.
+  // La “proposta di recupero” deve chiedere al destinatario di indicare preferenza.
   const commonRules = normalizeSpaces(`
 REGOLE:
 - Lunghezza: ${wr} parole.
 - Integra contesto/situazione/dettagli dentro la scusa (NON elencarli in fondo).
 - Niente sezioni tipo "Dettagli:" / "Contesto:" / "Note:".
 - Una sola versione.
-- Inserisci SEMPRE una proposta concreta per recuperare (orario o alternativa).
+- Inserisci SEMPRE una proposta di recupero, MA:
+  - NON inserire riferimenti temporali specifici (niente "domani", "stasera", "lunedì", "alle 15", "nel pomeriggio").
+  - NON inserire riferimenti spaziali specifici (niente "in ufficio", "al bar", "a casa tua").
+  - La proposta deve lasciare la scelta al destinatario: "Dimmi tu quando/come preferisci", "Proponimi tu una disponibilità", "Fammi sapere che modalità ti è più comoda".
 ${forceUseDetails && details ? "- OBBLIGATORIO: inserisci almeno UN dettaglio specifico dal campo 'Dettagli aggiuntivi' nel corpo del testo." : ""}
 `);
 
@@ -213,6 +220,7 @@ Scrivi UNA scusa BUSINESS in stile email formale.
 Vincoli:
 - tono professionale, nessun umorismo
 - struttura compatta: apertura + responsabilità + causa plausibile + 2-3 next step concreti + chiusura
+- nessun orario/data/luogo specifico: chiedi al destinatario disponibilità/modalità
 
 ${userParams}
 
@@ -225,7 +233,7 @@ ${commonRules}
 Scrivi UNA scusa PREMIUM: più curata della base ma non lunga.
 Vincoli:
 - empatia reale + responsabilità + spiegazione plausibile
-- proposta concreta (due opzioni) per recuperare
+- proposta di recupero senza tempo/luogo specifici: chiedi "dimmi tu quando/come preferisci"
 
 ${userParams}
 
@@ -239,7 +247,7 @@ Scrivi UNA scusa DIVERTENTE che faccia sorridere davvero.
 Vincoli:
 - ironia chiara (1 elemento comico originale), ma plausibile
 - niente tono premium/business
-- proposta concreta per recuperare
+- proposta di recupero senza tempo/luogo specifici: chiedi al destinatario di proporre lui/lei quando/come
 - niente volgarità
 
 ${userParams}
@@ -252,7 +260,7 @@ ${commonRules}
 Scrivi UNA scusa BASE breve e credibile.
 Vincoli:
 - diretta e naturale
-- proposta concreta di recupero
+- proposta di recupero senza tempo/luogo specifici: chiedi al destinatario preferenza
 
 ${userParams}
 
@@ -317,13 +325,8 @@ async function callOpenAI({ sku, context, message, details, forceUseDetails }) {
 
 // ---------------- SESSION ID PARSING (GET + POST) ----------------
 function getSessionId(event) {
-  // supporta:
-  // - GET /.netlify/functions/session-email?session_id=...  (Stripe standard)
-  // - GET /.netlify/functions/session-email?sessionId=...
-  // - POST { sessionId: "..." }
   const qs = event.queryStringParameters || {};
   const sidFromQuery = qs.session_id || qs.sessionId;
-
   if (sidFromQuery) return sidFromQuery;
 
   if (event.httpMethod === "POST") {
@@ -334,7 +337,6 @@ function getSessionId(event) {
       return null;
     }
   }
-
   return null;
 }
 
@@ -344,7 +346,6 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: CORS_HEADERS, body: "" };
   }
 
-  // Accetta GET e POST (fix 405)
   if (event.httpMethod !== "GET" && event.httpMethod !== "POST") {
     return json(405, { error: "Metodo non consentito" });
   }
@@ -370,7 +371,6 @@ exports.handler = async (event) => {
   const metadata = session.metadata || {};
   const customerDetails = session.customer_details || {};
   const email = metadata.email || customerDetails.email;
-
   if (!email) return json(400, { error: "Email mancante." });
 
   const sku = metadata.sku || "SCUSA_BASE";
@@ -378,7 +378,6 @@ exports.handler = async (event) => {
   const message = metadata.message || "";
   const details = metadata.details || "";
 
-  // 1) AI
   const tokens = extractDetailTokens(details);
   const ai1 = await callOpenAI({ sku, context, message, details, forceUseDetails: false });
 
@@ -395,7 +394,7 @@ exports.handler = async (event) => {
     console.warn("[session-email] OpenAI failed -> fallback:", { reason: ai1.reason, msg: ai1.message });
   }
 
-  // 2) obbligo dettagli (se presenti) con 1 retry
+  // Obbligo dettagli con 1 retry (se presenti)
   if (!usedFallback && details && tokens.length > 0) {
     if (!textIncludesAnyToken(excuseText, tokens)) {
       const ai2 = await callOpenAI({ sku, context, message, details, forceUseDetails: true });
@@ -411,7 +410,6 @@ exports.handler = async (event) => {
     }
   }
 
-  // 3) invio mail
   let transporter;
   try {
     transporter = createTransport();
